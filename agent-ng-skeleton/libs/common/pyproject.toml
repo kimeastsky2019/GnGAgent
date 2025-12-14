@@ -1,4 +1,0 @@
-[project]
-name = "ng-common"
-version = "0.1.0"
-dependencies = ["pydantic>=2.8,<3", "typing-extensions"]
