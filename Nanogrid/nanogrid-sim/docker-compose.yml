@@ -1,0 +1,66 @@
+version: "3.9"
+services:
+  db:
+    image: timescale/timescaledb-ha:pg16
+    container_name: ng_db
+    environment:
+      POSTGRES_USER: ngadmin
+      POSTGRES_PASSWORD: ngpass
+      POSTGRES_DB: nanogrid
+    # 포트는 내부 네트워크에서만 사용
+    # ports:
+    #   - "5433:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/00_init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+    container_name: ng_backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg://ngadmin:ngpass@db:5432/nanogrid
+      UVICORN_HOST: 0.0.0.0
+      UVICORN_PORT: 8000
+      APP_ENV: docker
+      APP_SECRET: "change-me"
+    ports:
+      - "5012:8000"
+    volumes:
+      - ./backend/app:/app/app:rw
+
+  # adminer는 포트 충돌로 제거
+  # adminer:
+  #   image: adminer
+  #   container_name: ng_adminer
+  #   ports:
+  #     - "8080:8080"
+  #   depends_on:
+  #     - db
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: ng_frontend
+    depends_on:
+      - backend
+    ports:
+      - "5011:80"
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8000
+    # 개발 모드 사용 시 주석 해제:
+    # volumes:
+    #   - ./frontend:/app
+    #   - /app/node_modules
+    # command: npm run dev -- --host
+
+volumes:
+  db_data:

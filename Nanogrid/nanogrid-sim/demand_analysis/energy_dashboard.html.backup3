@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Energy Demand Analysis AI Agent</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            padding: 30px 20px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        h1 {
+            font-size: 2.5em;
+            color: #667eea;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .subtitle {
+            font-size: 1.2em;
+            color: #666;
+        }
+
+        .agent-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 10px 25px;
+            border-radius: 25px;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+
+        /* Upload Section */
+        .upload-section {
+            background: white;
+            padding: 30px;
+            margin-bottom: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .upload-section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .model-selection {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .model-selection label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .model-options {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .model-option {
+            flex: 1;
+            min-width: 150px;
+        }
+
+        .model-option input[type="radio"] {
+            margin-right: 8px;
+        }
+
+        .model-option label {
+            display: inline;
+            cursor: pointer;
+            font-weight: normal;
+        }
+
+        #uploadForm {
+            margin-bottom: 20px;
+        }
+
+        #fileInput {
+            padding: 10px;
+            border: 2px dashed #667eea;
+            border-radius: 8px;
+            width: 100%;
+            max-width: 400px;
+            cursor: pointer;
+            margin-bottom: 15px;
+        }
+
+        #uploadBtn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        #uploadBtn:hover {
+            opacity: 0.9;
+        }
+
+        #uploadBtn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        #uploadStatus {
+            margin-top: 15px;
+            min-height: 30px;
+        }
+
+        /* Infographics Section */
+        .infographics-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .infographic-card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .infographic-card h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+
+        .chart-container {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+
+        .chart-title {
+            font-size: 1.3em;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .stat-icon {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .heatmap-container {
+            margin-top: 20px;
+        }
+    </style>
+
+    <script>
+        // 다국어 지원
+        let currentLang = localStorage.getItem('language') || 'ko';
+        let translations = {};
+        
+        // 번역 로드
+        async function loadTranslations(lang) {
+            try {
+                const response = await fetch(`/da/api/translations?lang=${lang}`);
+                const data = await response.json();
+                translations = data.translations || {};
+                currentLang = lang;
+                localStorage.setItem('language', lang);
+                applyTranslations();
+            } catch (error) {
+                console.error('Failed to load translations:', error);
+            }
+        }
+        
+        // 번역 적용
+        function applyTranslations() {
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                const translation = getNestedTranslation(translations, key);
+                if (translation) {
+                    if (el.tagName === 'INPUT' && el.type === 'placeholder') {
+                        el.placeholder = translation;
+                    } else {
+                        el.textContent = translation;
+                    }
+                }
+            });
+        }
+        
+        // 중첩된 번역 키 접근
+        function getNestedTranslation(obj, path) {
+            return path.split('.').reduce((o, p) => o && o[p], obj);
+        }
+        
+        // 언어 변경
+        function changeLanguage(lang) {
+            loadTranslations(lang);
+        }
+        
+        // 초기 로드
+        loadTranslations(currentLang);
+    </script>
+</head>
+<body>
+    <nav class="top-nav" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 15px 20px; color: white; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+        <div style="display: flex; align-items: center; gap: 20px;">
+            <a href="/eop" style="color: white; text-decoration: none; font-weight: 600; font-size: 1.2em;">🏠 Energy Orchestrator Platform</a>
+            <a href="/da" style="color: white; text-decoration: none;">⚡ 수요 분석</a>
+            <a href="/sa" style="color: white; text-decoration: none;">🔋 공급 분석</a>
+            <a href="/dtwin" style="color: white; text-decoration: none;">🏫 디지털 트윈</a>
+            <a href="/disaster" style="color: white; text-decoration: none;">🚨 재난 관리</a>
+        </div>
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <select id="language-selector" onchange="changeLanguage(this.value)" style="padding: 5px 10px; border-radius: 5px; border: none; background: white; color: #333;">
+                <option value="ko">한국어</option>
+                <option value="en">English</option>
+                <option value="ja">日本語</option>
+            </select>
+        </div>
+    </nav>
+
+    <div class="container">
+        <header>
+            <h1>⚡ Energy Demand Analysis AI Agent</h1>
+            <p class="subtitle">Advanced AI-Powered Energy Forecasting & Anomaly Detection System</p>
+            <div class="agent-badge">🤖 Multi-Agent AI System with CNN, LSTM, TFT Models</div>
+        </header>
+
+        <!-- Upload Section -->
+        <div class="upload-section">
+            <h2>📤 Upload CSV File</h2>
+            
+            <!-- Model Selection -->
+            <div class="model-selection">
+                <label>🤖 머신러닝 모델 선택:</label>
+                <div class="model-options">
+                    <div class="model-option">
+                        <input type="radio" id="model_randomforest" name="model_type" value="RandomForest" checked>
+                        <label for="model_randomforest">Random Forest</label>
+                    </div>
+                    <div class="model-option">
+                        <input type="radio" id="model_cnn" name="model_type" value="CNN">
+                        <label for="model_cnn">CNN (Convolutional Neural Network)</label>
+                    </div>
+                    <div class="model-option">
+                        <input type="radio" id="model_lstm" name="model_type" value="LSTM">
+                        <label for="model_lstm">LSTM (Long Short-Term Memory)</label>
+                    </div>
+                    <div class="model-option">
+                        <input type="radio" id="model_tft" name="model_type" value="TFT">
+                        <label for="model_tft">TFT (Temporal Fusion Transformer)</label>
+                    </div>
+                </div>
+            </div>
+            
+            <form id="uploadForm" enctype="multipart/form-data">
+                <input type="file" id="fileInput" name="file" accept=".csv" required>
+                <button type="submit" id="uploadBtn">📤 Upload & Analyze</button>
+            </form>
+            <div id="uploadStatus"></div>
+            <div id="uploadProgress" style="display: none; margin-top: 15px;">
+                <div style="background: #f0f0f0; border-radius: 10px; height: 20px; overflow: hidden;">
+                    <div id="progressBar" style="background: linear-gradient(90deg, #667eea, #764ba2); height: 100%; width: 0%; transition: width 0.3s;"></div>
+                </div>
+                <p id="progressText" style="text-align: center; margin-top: 10px; color: #666;">Processing...</p>
+            </div>
+        </div>
+
+        <!-- Statistics Grid -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">📊</div>
+                <div class="stat-value" id="totalRecords">0</div>
+                <div class="stat-label">Total Records</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">⚡</div>
+                <div class="stat-value" id="peakDemand">0</div>
+                <div class="stat-label">Peak Demand (kW)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">📈</div>
+                <div class="stat-value" id="avgConsumption">0</div>
+                <div class="stat-label">Avg Consumption (kWh)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🚨</div>
+                <div class="stat-value" id="anomaliesCount">0</div>
+                <div class="stat-label">Anomalies Detected</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">⭐</div>
+                <div class="stat-value" id="qualityScore">0</div>
+                <div class="stat-label">Quality Score (%)</div>
+            </div>
+        </div>
+
+        <!-- Infographics Section -->
+        <div class="infographics-section">
+            <div class="infographic-card">
+                <h3>📅 일간 패턴 (Daily Pattern)</h3>
+                <div id="dailyPatternChart"></div>
+            </div>
+            <div class="infographic-card">
+                <h3>📆 주간 패턴 (Weekly Pattern)</h3>
+                <div id="weeklyPatternChart"></div>
+            </div>
+            <div class="infographic-card">
+                <h3>📅 월간 패턴 (Monthly Pattern)</h3>
+                <div id="monthlyPatternChart"></div>
+            </div>
+            <div class="infographic-card">
+                <h3>📊 연간 패턴 (Yearly Pattern)</h3>
+                <div id="yearlyPatternChart"></div>
+            </div>
+        </div>
+
+        <!-- Heatmap Section -->
+        <div class="chart-container">
+            <div class="chart-title">🔥 히트맵: 요일별 x 계절별 전력 소비 (kWh)</div>
+            <div id="heatmapChart" class="heatmap-container"></div>
+        </div>
+
+        <!-- Time Series Chart -->
+        <div class="chart-container">
+            <div class="chart-title">📈 시계열 데이터 분석</div>
+            <div id="timeSeriesChart"></div>
+        </div>
+
+        <!-- Predictions Chart -->
+        <div class="chart-container">
+            <div class="chart-title">🔮 7일 예측 결과</div>
+            <div id="predictionsChart"></div>
+        </div>
+    </div>
+
+    <script>
+                // Upload handler with model selection
+        document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const fileInput = document.getElementById('fileInput');
+            const uploadBtn = document.getElementById('uploadBtn');
+            const uploadStatus = document.getElementById('uploadStatus');
+            const uploadProgress = document.getElementById('uploadProgress');
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+            
+            if (!fileInput.files[0]) {
+                uploadStatus.innerHTML = '<p style="color: #e74c3c;">❌ Please select a file</p>';
+                return;
+            }
+            
+            // Get selected model
+            const modelType = document.querySelector('input[name="model_type"]:checked').value;
+            
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            formData.append('model_type', modelType);
+            
+            uploadBtn.disabled = true;
+            uploadBtn.textContent = '⏳ Uploading...';
+            uploadStatus.innerHTML = '';
+            uploadProgress.style.display = 'block';
+            progressBar.style.width = '10%';
+            progressText.textContent = 'Uploading file...';
+            
+            try {
+                progressBar.style.width = '30%';
+                const response = await fetch('/da/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                progressBar.style.width = '60%';
+                progressText.textContent = 'Processing data with ' + modelType + '...';
+                
+                // Parse response once
+                let result;
+                try {
+                    result = await response.json();
+                } catch (parseError) {
+                    throw new Error('Failed to parse server response: ' + parseError.message);
+                }
+                
+                if (response.ok && result && result.success) {
+                    progressBar.style.width = '100%';
+                    progressText.textContent = 'Complete!';
+                    
+                    const quality = result.result ? result.result.quality_score : 'N/A';
+                    const records = result.result ? result.result.total_records : 'N/A';
+                    const anomalies = result.result ? result.result.anomalies_count : 'N/A';
+                    const predictions = result.result ? result.result.predictions_count : 'N/A';
+                    
+                    uploadStatus.innerHTML = '<div style="background: #d4edda; color: #155724; padding: 15px; border-radius: 8px; margin-top: 15px;"><p style="margin: 0;"><strong>✅ Success!</strong> ' + (result.message || 'File uploaded and analyzed successfully') + '</p><p style="margin: 5px 0 0 0; font-size: 14px;">Model: ' + modelType + ' | Quality Score: ' + quality + '% | Records: ' + records + ' | Anomalies: ' + anomalies + ' | Predictions: ' + predictions + '</p></div>';
+                    
+                    // Load all data
+                    await loadAllData();
+                    
+                    // Reload after 2 seconds
+                    setTimeout(() => {
+                        location.reload();
+                    }, 2000);
+                } else {
+                    progressBar.style.width = '0%';
+                    const errorMsg = result && result.error ? result.error : 'Upload failed';
+                    uploadStatus.innerHTML = '<div style="background: #f8d7da; color: #721c24; padding: 15px; border-radius: 8px; margin-top: 15px;"><p style="margin: 0;"><strong>❌ Error:</strong> ' + errorMsg + '</p><p style="margin: 5px 0 0 0; font-size: 12px;">Please check file format and try again.</p></div>';
+                }
+            } catch (error) {
+                progressBar.style.width = '0%';
+                uploadStatus.innerHTML = '<div style="background: #f8d7da; color: #721c24; padding: 15px; border-radius: 8px; margin-top: 15px;"><p style="margin: 0;"><strong>❌ Error:</strong> ' + (error.message || 'Network error. Please try again.') + '</p></div>';
+            } finally {
+                uploadBtn.disabled = false;
+                uploadBtn.textContent = '📤 Upload & Analyze';
+                setTimeout(() => { uploadProgress.style.display = 'none'; }, 2000);
+            }
+        });
+        
+                        const errorMsg = result.error || 'Upload failed';
+                        uploadStatus.innerHTML = '<div style="background: #f8d7da; color: #721c24; padding: 15px; border-radius: 8px; margin-top: 15px;"><p style="margin: 0;"><strong>❌ Error:</strong> ' + errorMsg + '</p><p style="margin: 5px 0 0 0; font-size: 12px;">Please check file format and try again.</p></div>';
+                    }
+                } else {
+                    progressBar.style.width = '0%';
+                    let errorMsg = 'Upload failed';
+                    try {
+                        const errorResult = result;
+                        errorMsg = errorResult.error || errorMsg;
+                    } catch (e) {
+                        errorMsg = 'HTTP ' + response.status + ': ' + response.statusText;
+                    }
+                    uploadStatus.innerHTML = '<div style="background: #f8d7da; color: #721c24; padding: 15px; border-radius: 8px; margin-top: 15px;"><p style="margin: 0;"><strong>❌ Error:</strong> ' + errorMsg + '</p></div>';
+                }
+            } catch (error) {
+                progressBar.style.width = '0%';
+                uploadStatus.innerHTML = '<div style="background: #f8d7da; color: #721c24; padding: 15px; border-radius: 8px; margin-top: 15px;"><p style="margin: 0;"><strong>❌ Error:</strong> ' + (error.message || 'Network error') + '</p></div>';
+            } finally {
+                uploadBtn.disabled = false;
+                uploadBtn.textContent = '📤 Upload & Analyze';
+                setTimeout(() => { uploadProgress.style.display = 'none'; }, 2000);
+            }
+        });
+        
+        // Load all data and visualizations
+        async function loadAllData() {
+            await loadSummary();
+            await loadPatterns();
+            await loadHeatmap();
+        }
+        
+        // Load summary data
+        async function loadSummary() {
+            try {
+                const response = await fetch('/da/api/summary');
+                if (response.ok) {
+                    const data = result;
+                    updateStats(data);
+                }
+            } catch (error) {
+                console.error('Error loading summary:', error);
+            }
+        }
+        
+        // Load patterns
+        async function loadPatterns() {
+            try {
+                const response = await fetch('/da/api/patterns');
+                if (response.ok) {
+                    const patterns = result;
+                    visualizePatterns(patterns);
+                }
+            } catch (error) {
+                console.error('Error loading patterns:', error);
+            }
+        }
+        
+        // Load heatmap
+        async function loadHeatmap() {
+            try {
+                const response = await fetch('/da/api/heatmap');
+                if (response.ok) {
+                    const heatmapData = result;
+                    visualizeHeatmap(heatmapData);
+                }
+            } catch (error) {
+                console.error('Error loading heatmap:', error);
+            }
+        }
+        
+        // Update statistics
+        function updateStats(data) {
+            if (data.total_records !== undefined) {
+                document.getElementById('totalRecords').textContent = data.total_records || '0';
+            }
+            if (data.anomalies_count !== undefined) {
+                document.getElementById('anomaliesCount').textContent = data.anomalies_count || '0';
+            }
+            if (data.quality_score !== undefined) {
+                document.getElementById('qualityScore').textContent = (data.quality_score || 0).toFixed(1);
+            }
+        }
+        
+        // Visualize patterns
+        function visualizePatterns(patterns) {
+            // Daily pattern
+            if (patterns.daily && Object.keys(patterns.daily).length > 0) {
+                const hours = Object.keys(patterns.daily).map(Number).sort((a, b) => a - b);
+                const values = hours.map(h => patterns.daily[h]);
+                
+                Plotly.newPlot('dailyPatternChart', [{
+                    x: hours,
+                    y: values,
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    line: { color: '#667eea', width: 2 },
+                    marker: { size: 8 }
+                }], {
+                    title: '시간별 평균 전력 소비',
+                    xaxis: { title: 'Hour (24시간)' },
+                    yaxis: { title: 'kWh' },
+                    margin: { t: 30, b: 50, l: 50, r: 30 }
+                });
+            }
+            
+            // Weekly pattern
+            if (patterns.weekly && Object.keys(patterns.weekly).length > 0) {
+                const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+                const dayValues = days.map((day, idx) => patterns.weekly[idx] || 0);
+                
+                Plotly.newPlot('weeklyPatternChart', [{
+                    x: days,
+                    y: dayValues,
+                    type: 'bar',
+                    marker: { color: '#764ba2' }
+                }], {
+                    title: '요일별 평균 전력 소비',
+                    xaxis: { title: 'Day of Week' },
+                    yaxis: { title: 'kWh' },
+                    margin: { t: 30, b: 50, l: 50, r: 30 }
+                });
+            }
+            
+            // Monthly pattern
+            if (patterns.monthly && Object.keys(patterns.monthly).length > 0) {
+                const months = Object.keys(patterns.monthly).map(Number).sort((a, b) => a - b);
+                const monthValues = months.map(m => patterns.monthly[m]);
+                const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                
+                Plotly.newPlot('monthlyPatternChart', [{
+                    x: months.map(m => monthNames[m - 1]),
+                    y: monthValues,
+                    type: 'bar',
+                    marker: { color: '#667eea' }
+                }], {
+                    title: '월별 평균 전력 소비',
+                    xaxis: { title: 'Month' },
+                    yaxis: { title: 'kWh' },
+                    margin: { t: 30, b: 50, l: 50, r: 30 }
+                });
+            }
+            
+            // Yearly pattern
+            if (patterns.yearly && Object.keys(patterns.yearly).length > 0) {
+                const years = Object.keys(patterns.yearly).map(Number).sort((a, b) => a - b);
+                const yearValues = years.map(y => patterns.yearly[y]);
+                
+                Plotly.newPlot('yearlyPatternChart', [{
+                    x: years,
+                    y: yearValues,
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    line: { color: '#764ba2', width: 2 },
+                    marker: { size: 10 }
+                }], {
+                    title: '연도별 평균 전력 소비',
+                    xaxis: { title: 'Year' },
+                    yaxis: { title: 'kWh' },
+                    margin: { t: 30, b: 50, l: 50, r: 30 }
+                });
+            }
+        }
+        
+        // Visualize heatmap
+        function visualizeHeatmap(heatmapData) {
+            if (!heatmapData || !heatmapData.matrix) return;
+            
+            const days = heatmapData.days || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+            const seasons = heatmapData.seasons || ['Spring', 'Summer', 'Fall', 'Winter'];
+            const matrix = heatmapData.matrix;
+            
+            const trace = {
+                x: days,
+                y: seasons,
+                z: matrix,
+                type: 'heatmap',
+                colorscale: 'Viridis',
+                showscale: true,
+                colorbar: { title: 'kWh' }
+            };
+            
+            Plotly.newPlot('heatmapChart', [trace], {
+                title: '요일별 x 계절별 전력 소비 히트맵',
+                xaxis: { title: 'Day of Week' },
+                yaxis: { title: 'Season' },
+                margin: { t: 50, b: 50, l: 80, r: 50 }
+            });
+        }
+        
+        // Load data on page load
+        window.addEventListener('load', async function() {
+            loadAllData();
+        });
+    
+        // Auto-analysis function for URL parameter
+        async function analyzeFile(filename) {
+            const uploadStatus = document.getElementById('uploadStatus');
+            const uploadProgress = document.getElementById('uploadProgress');
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+            
+            if (uploadStatus) uploadStatus.innerHTML = '<p style="color: #667eea;">🔄 Analyzing file: ' + filename + '</p>';
+            if (uploadProgress) uploadProgress.style.display = 'block';
+            if (progressBar) progressBar.style.width = '30%';
+            if (progressText) progressText.textContent = 'Loading file...';
+            
+            try {
+                const modelType = document.querySelector('input[name="model_type"]:checked')?.value || 'RandomForest';
+                
+                if (progressBar) progressBar.style.width = '50%';
+                if (progressText) progressText.textContent = 'Analyzing with ' + modelType + '...';
+                
+                const response = await fetch('/da/api/analyze?file=' + encodeURIComponent(filename) + '&model_type=' + modelType);
+                
+                if (progressBar) progressBar.style.width = '80%';
+                if (progressText) progressText.textContent = 'Processing results...';
+                
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    if (progressBar) progressBar.style.width = '100%';
+                    if (progressText) progressText.textContent = 'Complete!';
+                    
+                    if (uploadStatus) {
+                        const quality = result.result ? result.result.quality_score : 'N/A';
+                        const records = result.result ? result.result.total_records : 'N/A';
+                        const anomalies = result.result ? result.result.anomalies_count : 'N/A';
+                        uploadStatus.innerHTML = '<div style="background: #d4edda; color: #155724; padding: 15px; border-radius: 8px; margin-top: 15px;"><p style="margin: 0;"><strong>✅ Analysis Complete!</strong> ' + (result.message || 'File analyzed successfully') + '</p><p style="margin: 5px 0 0 0; font-size: 14px;">Quality Score: ' + quality + '% | Records: ' + records + ' | Anomalies: ' + anomalies + '</p></div>';
+                    }
+                    
+                    if (typeof loadAllData === 'function') {
+                        await loadAllData();
+                    }
+                    
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1000);
+                } else {
+                    if (progressBar) progressBar.style.width = '0%';
+                    if (uploadStatus) {
+                        const errorMsg = result && result.error ? result.error : 'Analysis failed';
+                        uploadStatus.innerHTML = '<div style="background: #f8d7da; color: #721c24; padding: 15px; border-radius: 8px; margin-top: 15px;"><p style="margin: 0;"><strong>❌ Error:</strong> ' + errorMsg + '</p></div>';
+                    }
+                }
+            } catch (error) {
+                if (progressBar) progressBar.style.width = '0%';
+                if (uploadStatus) {
+                    uploadStatus.innerHTML = '<div style="background: #f8d7da; color: #721c24; padding: 15px; border-radius: 8px; margin-top: 15px;"><p style="margin: 0;"><strong>❌ Error:</strong> ' + (error.message || 'Analysis failed') + '</p></div>';
+                }
+            } finally {
+                if (uploadProgress) setTimeout(() => { uploadProgress.style.display = 'none'; }, 2000);
+            }
+        }
+        
+        // Auto-trigger analysis on page load if file parameter exists
+        window.addEventListener('load', async function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const filename = urlParams.get('file');
+            if (filename) {
+                console.log('Auto-analyzing file:', filename);
+                await analyzeFile(filename);
+            }
+        });
+
+    </script>
+</body>
+</html>

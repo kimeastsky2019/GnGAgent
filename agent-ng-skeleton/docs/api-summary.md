@@ -1,0 +1,20 @@
+## API Summary
+- `dt`:
+  - POST `/assets`
+  - PATCH `/assets/{id}/state`
+  - GET `/topology/{siteId}`
+  - POST `/constraints`
+- `forecast`:
+  - POST `/forecast/load|pv|price`
+- `eop`:
+  - POST `/plan/optimize`
+  - POST `/plan/apply`
+- `monitoring`:
+  - POST `/ingest`
+  - GET `/kpis?siteId&window`
+- `engagement`:
+  - POST `/nudges`
+  - POST `/actions/confirm`
+- `gateway`:
+  - GET `/health`
+  - GET `/probe`

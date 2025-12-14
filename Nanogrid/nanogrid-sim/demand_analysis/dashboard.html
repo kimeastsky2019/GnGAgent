@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Energy Demand Analysis Dashboard</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            padding: 30px 20px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        h1 {
+            font-size: 2.5em;
+            color: #667eea;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .subtitle {
+            font-size: 1.2em;
+            color: #666;
+        }
+
+        /* Data Source Cards */
+        .data-sources-section {
+            margin-bottom: 30px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            font-size: 1.5em;
+            color: white;
+            font-weight: 600;
+        }
+
+        .btn {
+            background: white;
+            color: #667eea;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .data-source-card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s;
+        }
+
+        .data-source-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .card-title {
+            font-size: 1.2em;
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .card-type {
+            background: #f0f0f0;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 0.8em;
+            color: #666;
+        }
+
+        .card-description {
+            color: #666;
+            margin-bottom: 15px;
+            font-size: 0.9em;
+        }
+
+        .card-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .btn-small {
+            padding: 8px 15px;
+            font-size: 0.9em;
+        }
+
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            overflow: auto;
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 30px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .close {
+            color: #aaa;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: #000;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            background: #f0f0f0;
+            border: none;
+            border-radius: 8px 8px 0 0;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .tab.active {
+            background: white;
+            color: #667eea;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Analysis Results */
+        .analysis-section {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+
+        .analysis-section h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+
+        .chart-container {
+            margin: 20px 0;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+
+        .success {
+            background: #efe;
+            color: #3c3;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+
+        /* Model Selection */
+        .model-selection {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .model-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .model-card:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+        }
+
+        .model-card.selected {
+            border-color: #667eea;
+            background: #e8f0fe;
+        }
+
+        .model-card input[type="radio"] {
+            margin-right: 10px;
+        }
+
+        .model-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .model-description {
+            font-size: 0.85em;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>⚡ Energy Demand Analysis Dashboard</h1>
+            <p class="subtitle">AI-Powered Time Series Analysis & Forecasting</p>
+        </header>
+
+        <!-- Data Sources Section -->
+        <div class="data-sources-section">
+            <div class="section-header">
+                <h2 class="section-title">Data Sources</h2>
+                <button class="btn btn-primary" onclick="openAddSourceModal()">+ Add Data Source</button>
+            </div>
+            <div class="cards-grid" id="dataSourcesGrid">
+                <div class="loading">Loading data sources...</div>
+            </div>
+        </div>
+
+        <!-- Analysis Results Section -->
+        <div class="analysis-section" id="analysisSection" style="display: none;">
+            <h2>Analysis Results</h2>
+            <div id="analysisContent"></div>
+        </div>
+    </div>
+
+    <!-- Add Data Source Modal -->
+    <div id="addSourceModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Add Data Source</h2>
+                <span class="close" onclick="closeAddSourceModal()">&times;</span>
+            </div>
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('csv')">CSV File</button>
+                <button class="tab" onclick="switchTab('api')">IoT API</button>
+            </div>
+
+            <form id="addSourceForm">
+                <div class="form-group">
+                    <label>Name *</label>
+                    <input type="text" id="sourceName" required>
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="sourceDescription"></textarea>
+                </div>
+
+                <!-- CSV Tab -->
+                <div id="csvTab" class="tab-content active">
+                    <div class="form-group">
+                        <label>CSV File *</label>
+                        <input type="file" id="csvFile" accept=".csv,.txt" required>
+                    </div>
+                </div>
+
+                <!-- API Tab -->
+                <div id="apiTab" class="tab-content">
+                    <div class="form-group">
+                        <label>API URL *</label>
+                        <input type="url" id="apiUrl" placeholder="https://api.example.com/data">
+                    </div>
+                    <div class="form-group">
+                        <label>HTTP Method</label>
+                        <select id="apiMethod">
+                            <option value="GET">GET</option>
+                            <option value="POST">POST</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Headers (JSON)</label>
+                        <textarea id="apiHeaders" placeholder='{"Authorization": "Bearer token"}'></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Parameters (JSON)</label>
+                        <textarea id="apiParams" placeholder='{"param1": "value1"}'></textarea>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">Add Source</button>
+                    <button type="button" class="btn" onclick="closeAddSourceModal()" style="flex: 1;">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Analysis Modal -->
+    <div id="analysisModal" class="modal">
+        <div class="modal-content" style="max-width: 900px;">
+            <div class="modal-header">
+                <h2>Run Analysis</h2>
+                <span class="close" onclick="closeAnalysisModal()">&times;</span>
+            </div>
+            <div id="analysisModalContent">
+                <div class="form-group">
+                    <label>Forecasting Model</label>
+                    <div class="model-selection" id="forecastingModels"></div>
+                </div>
+                <div class="form-group">
+                    <label>Anomaly Detection Model</label>
+                    <div class="model-selection" id="anomalyModels"></div>
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button class="btn btn-primary" onclick="runAnalysis()" style="flex: 1;">Run Analysis</button>
+                    <button class="btn" onclick="closeAnalysisModal()" style="flex: 1;">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api';
+        let currentSourceId = null;
+        let selectedForecastingModel = 'RandomForest';
+        let selectedAnomalyModel = 'IsolationForest';
+
+        // Load data sources on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            loadDataSources();
+            loadAvailableModels();
+        });
+
+        // Load data sources
+        async function loadDataSources() {
+            try {
+                const response = await fetch(`${API_BASE}/data-sources`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayDataSources(data.sources);
+                } else {
+                    document.getElementById('dataSourcesGrid').innerHTML = 
+                        '<div class="error">Failed to load data sources</div>';
+                }
+            } catch (error) {
+                document.getElementById('dataSourcesGrid').innerHTML = 
+                    `<div class="error">Error: ${error.message}</div>`;
+            }
+        }
+
+        // Display data sources as cards
+        function displayDataSources(sources) {
+            const grid = document.getElementById('dataSourcesGrid');
+            
+            if (sources.length === 0) {
+                grid.innerHTML = '<div class="loading">No data sources. Click "Add Data Source" to get started.</div>';
+                return;
+            }
+
+            grid.innerHTML = sources.map(source => `
+                <div class="data-source-card">
+                    <div class="card-header">
+                        <div class="card-title">${source.name}</div>
+                        <div class="card-type">${source.type.toUpperCase()}</div>
+                    </div>
+                    <div class="card-description">${source.description || 'No description'}</div>
+                    <div class="card-actions">
+                        <button class="btn btn-primary btn-small" onclick="runAnalysisForSource(${source.id})">
+                            Analyze
+                        </button>
+                        <button class="btn btn-small" onclick="viewMetadata(${source.id})">
+                            Metadata
+                        </button>
+                        <button class="btn btn-danger btn-small" onclick="deleteSource(${source.id})">
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Open add source modal
+        function openAddSourceModal() {
+            document.getElementById('addSourceModal').style.display = 'block';
+        }
+
+        // Close add source modal
+        function closeAddSourceModal() {
+            document.getElementById('addSourceModal').style.display = 'none';
+            document.getElementById('addSourceForm').reset();
+        }
+
+        // Switch tabs
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            
+            if (tab === 'csv') {
+                document.querySelector('.tab').classList.add('active');
+                document.getElementById('csvTab').classList.add('active');
+            } else {
+                document.querySelectorAll('.tab')[1].classList.add('active');
+                document.getElementById('apiTab').classList.add('active');
+            }
+        }
+
+        // Handle form submission
+        document.getElementById('addSourceForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const name = document.getElementById('sourceName').value;
+            const description = document.getElementById('sourceDescription').value;
+            const activeTab = document.querySelector('.tab.active').textContent;
+            
+            try {
+                if (activeTab === 'CSV File') {
+                    // Handle CSV upload
+                    const fileInput = document.getElementById('csvFile');
+                    if (!fileInput.files[0]) {
+                        alert('Please select a CSV file');
+                        return;
+                    }
+
+                    const formData = new FormData();
+                    formData.append('file', fileInput.files[0]);
+                    formData.append('name', name);
+                    formData.append('description', description);
+                    formData.append('type', 'csv');
+
+                    const response = await fetch(`${API_BASE}/data-sources`, {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const data = await response.json();
+                    if (data.success) {
+                        closeAddSourceModal();
+                        loadDataSources();
+                        alert('Data source added successfully!');
+                    } else {
+                        alert(`Error: ${data.error}`);
+                    }
+                } else {
+                    // Handle API source
+                    const apiUrl = document.getElementById('apiUrl').value;
+                    const apiMethod = document.getElementById('apiMethod').value;
+                    let apiHeaders = {};
+                    let apiParams = {};
+
+                    try {
+                        const headersText = document.getElementById('apiHeaders').value;
+                        if (headersText) apiHeaders = JSON.parse(headersText);
+                    } catch (e) {
+                        alert('Invalid JSON in Headers field');
+                        return;
+                    }
+
+                    try {
+                        const paramsText = document.getElementById('apiParams').value;
+                        if (paramsText) apiParams = JSON.parse(paramsText);
+                    } catch (e) {
+                        alert('Invalid JSON in Parameters field');
+                        return;
+                    }
+
+                    const response = await fetch(`${API_BASE}/data-sources`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            type: 'api',
+                            name: name,
+                            description: description,
+                            api_url: apiUrl,
+                            api_config: {
+                                method: apiMethod,
+                                headers: apiHeaders,
+                                params: apiParams
+                            }
+                        })
+                    });
+
+                    const data = await response.json();
+                    if (data.success) {
+                        closeAddSourceModal();
+                        loadDataSources();
+                        alert('Data source added successfully!');
+                    } else {
+                        alert(`Error: ${data.error}`);
+                    }
+                }
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+            }
+        });
+
+        // Delete source
+        async function deleteSource(sourceId) {
+            if (!confirm('Are you sure you want to delete this data source?')) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/data-sources/${sourceId}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    loadDataSources();
+                    alert('Data source deleted successfully!');
+                } else {
+                    alert(`Error: ${data.error}`);
+                }
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+            }
+        }
+
+        // Run analysis for source
+        function runAnalysisForSource(sourceId) {
+            currentSourceId = sourceId;
+            document.getElementById('analysisModal').style.display = 'block';
+        }
+
+        // Close analysis modal
+        function closeAnalysisModal() {
+            document.getElementById('analysisModal').style.display = 'none';
+        }
+
+        // Load available models
+        async function loadAvailableModels() {
+            try {
+                const response = await fetch(`${API_BASE}/models`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayModels(data.models.forecasting, 'forecastingModels', 'forecasting');
+                    displayModels(data.models.anomaly_detection, 'anomalyModels', 'anomaly');
+                }
+            } catch (error) {
+                console.error('Error loading models:', error);
+            }
+        }
+
+        // Display models
+        function displayModels(models, containerId, type) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = models.map(model => `
+                <div class="model-card ${model.id === (type === 'forecasting' ? selectedForecastingModel : selectedAnomalyModel) ? 'selected' : ''}" 
+                     onclick="selectModel('${model.id}', '${type}')">
+                    <input type="radio" name="${type}Model" value="${model.id}" 
+                           ${model.id === (type === 'forecasting' ? selectedForecastingModel : selectedAnomalyModel) ? 'checked' : ''}>
+                    <div class="model-name">${model.name}</div>
+                    <div class="model-description">${model.description}</div>
+                </div>
+            `).join('');
+        }
+
+        // Select model
+        function selectModel(modelId, type) {
+            if (type === 'forecasting') {
+                selectedForecastingModel = modelId;
+            } else {
+                selectedAnomalyModel = modelId;
+            }
+            loadAvailableModels();
+        }
+
+        // Run analysis
+        async function runAnalysis() {
+            if (!currentSourceId) return;
+
+            closeAnalysisModal();
+            document.getElementById('analysisSection').style.display = 'block';
+            document.getElementById('analysisContent').innerHTML = '<div class="loading">Running analysis...</div>';
+
+            try {
+                const response = await fetch(`${API_BASE}/data-sources/${currentSourceId}/analyze`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        forecasting_model: selectedForecastingModel,
+                        anomaly_model: selectedAnomalyModel
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    displayAnalysisResults(data.results);
+                } else {
+                    document.getElementById('analysisContent').innerHTML = 
+                        `<div class="error">Error: ${data.error}</div>`;
+                }
+            } catch (error) {
+                document.getElementById('analysisContent').innerHTML = 
+                    `<div class="error">Error: ${error.message}</div>`;
+            }
+        }
+
+        // Display analysis results
+        function displayAnalysisResults(results) {
+            const content = document.getElementById('analysisContent');
+            
+            let html = '<div class="stats-grid">';
+            
+            if (results.statistics) {
+                const stats = results.statistics;
+                html += `
+                    <div class="stat-card">
+                        <div class="stat-value">${stats.total_records || 0}</div>
+                        <div class="stat-label">Total Records</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${results.anomalies_count || 0}</div>
+                        <div class="stat-label">Anomalies Detected</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${results.predictions_count || 0}</div>
+                        <div class="stat-label">Predictions Generated</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${results.quality_report?.quality_score || 0}</div>
+                        <div class="stat-label">Quality Score</div>
+                    </div>
+                `;
+            }
+            
+            html += '</div>';
+
+            if (results.metadata) {
+                html += '<h3>Metadata</h3>';
+                html += `<pre>${JSON.stringify(results.metadata, null, 2)}</pre>`;
+            }
+
+            content.innerHTML = html;
+        }
+
+        // View metadata
+        async function viewMetadata(sourceId) {
+            try {
+                const response = await fetch(`${API_BASE}/data-sources/${sourceId}/metadata`, {
+                    method: 'POST'
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    alert(`Metadata extracted successfully!\n\n${JSON.stringify(data.metadata, null, 2)}`);
+                } else {
+                    alert(`Error: ${data.error}`);
+                }
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+            }
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('addSourceModal');
+            if (event.target == modal) {
+                closeAddSourceModal();
+            }
+            const analysisModal = document.getElementById('analysisModal');
+            if (event.target == analysisModal) {
+                closeAnalysisModal();
+            }
+        }
+    </script>
+</body>
+</html>
+

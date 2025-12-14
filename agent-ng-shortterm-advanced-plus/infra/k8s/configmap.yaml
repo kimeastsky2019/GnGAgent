@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gateway-config
+  namespace: nanogrid
+data:
+  DT_URL: "http://dt.nanogrid.svc:8001"
+  EOP_URL: "http://eop.nanogrid.svc:8002"
+  FORECAST_URL: "http://forecast.nanogrid.svc:8003"
+  MON_URL: "http://monitoring.nanogrid.svc:8004"
+  ENG_URL: "http://engagement.nanogrid.svc:8005"
+  REDIS_URL: "redis://redis.nanogrid.svc:6379"
+  THROTTLE_TTL_MS: "60000"
+  THROTTLE_LIMIT: "120"
+  OTEL_ENABLED: "true"
+  OTEL_SERVICE_NAME: "gateway-nest"
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"

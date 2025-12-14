@@ -1,0 +1,38 @@
+services:
+  gateway-nest:
+    build: ./gateway-nest
+    ports: ["8080:8080"]
+    environment:
+      DT_URL: http://dt:8001
+      EOP_URL: http://eop:8002
+      FORECAST_URL: http://forecast:8003
+      MON_URL: http://monitoring:8004
+      ENG_URL: http://engagement:8005
+      API_KEY: dev-key-123
+      JWT_SECRET: supersecretjwt
+      REDIS_URL: redis://redis:6379
+    depends_on: [dt, eop, forecast, monitoring, engagement, redis]
+
+  dt:
+    build: ./services/dt
+    ports: ["8001:8001"]
+
+  eop:
+    build: ./services/eop
+    ports: ["8002:8002"]
+
+  forecast:
+    build: ./services/forecast
+    ports: ["8003:8003"]
+
+  monitoring:
+    build: ./services/monitoring
+    ports: ["8004:8004"]
+
+  engagement:
+    build: ./services/engagement
+    ports: ["8005:8005"]
+
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]

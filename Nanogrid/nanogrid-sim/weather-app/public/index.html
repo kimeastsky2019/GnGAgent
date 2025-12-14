@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <meta name="description" content="Advanced Weather Analysis Dashboard" />
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
+    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <title>🌤️ Weather Analysis Dashboard</title>
+  
+    <script>
+        let currentLang = localStorage.getItem('language') || 'ko';
+        let translations = {};
+        
+        async function loadTranslations(lang) {
+            try {
+                const response = await fetch(`/api/translations?lang=${lang}`);
+                const data = await response.json();
+                translations = data.translations || {};
+                currentLang = lang;
+                localStorage.setItem('language', lang);
+                applyTranslations();
+            } catch (error) {
+                console.error('Failed to load translations:', error);
+            }
+        }
+        
+        function applyTranslations() {
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                const translation = getNestedTranslation(translations, key);
+                if (translation) {
+                    if (el.tagName === 'INPUT' && el.type === 'placeholder') {
+                        el.placeholder = translation;
+                    } else {
+                        el.textContent = translation;
+                    }
+                }
+            });
+        }
+        
+        function getNestedTranslation(obj, path) {
+            return path.split('.').reduce((o, p) => o && o[p], obj);
+        }
+        
+        function changeLanguage(lang) {
+            loadTranslations(lang);
+        }
+        
+        loadTranslations(currentLang);
+    </script>
+</head>
+  <body>
+    <nav class="top-nav" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 15px 20px; color: white; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+        <div style="display: flex; align-items: center; gap: 20px;">
+            <a href="/eop" style="color: white; text-decoration: none; font-weight: 600; font-size: 1.2em;">🏠 Energy Orchestrator Platform</a>
+            <a href="/da" style="color: white; text-decoration: none;">⚡ 수요 분석</a>
+            <a href="/sa" style="color: white; text-decoration: none;">🔋 공급 분석</a>
+            <a href="/dtwin" style="color: white; text-decoration: none;">🏫 디지털 트윈</a>
+            <a href="/disaster" style="color: white; text-decoration: none;">🚨 재난 관리</a>
+        </div>
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <select id="language-selector" onchange="changeLanguage(this.value)" style="padding: 5px 10px; border-radius: 5px; border: none; background: white; color: #333;">
+                <option value="ko">한국어</option>
+                <option value="en">English</option>
+                <option value="ja">日本語</option>
+            </select>
+        </div>
+    </nav>
+
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+  </body>
+</html>
+

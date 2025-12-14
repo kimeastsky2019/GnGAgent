@@ -1,0 +1,14 @@
+{
+  "filename": "20251104_111123_test_verify.csv",
+  "upload_time": "2025-11-04T11:11:25.474087",
+  "total_records": 1,
+  "quality_score": 100.0,
+  "data_range": {
+    "start": "2024-01-01 00:00:00",
+    "end": "2024-01-01 00:00:00",
+    "duration_days": 0
+  },
+  "anomalies_count": 0,
+  "predictions_count": 0,
+  "model_type": "RandomForest"
+}
