@@ -96,6 +96,28 @@
         "sllm": "sLLM automation",
         "sllm_desc": "sLLM-based AI evaluation automation"
     },
+    "phase": {
+        "planning": {
+            "title": "Planning",
+            "description": "Establish the foundation for AI service adoption, from request forms to planning docs and model descriptions."
+        },
+        "review": {
+            "title": "Review & Assessment",
+            "description": "Identify AI service risks through pre-review requests, risk assessments, and impact/safety evaluations."
+        },
+        "development": {
+            "title": "Development",
+            "description": "Proceed with development after establishing development plans, risk management plans, and governance approvals."
+        },
+        "verification": {
+            "title": "Verification & Deployment",
+            "description": "Perform final verification before operation including pre-op verification, third-party evaluation, and deployment approvals."
+        },
+        "operations": {
+            "title": "Operations & Improvement",
+            "description": "Real-time monitoring via integrated dashboard and continuous improvement management."
+        }
+    },
     "flow": {
         "progress_label": "Flow progress",
         "btn_prev": "Previous",

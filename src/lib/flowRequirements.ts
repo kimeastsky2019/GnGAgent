@@ -1,6 +1,15 @@
 /**
  * 기획·설계 단계별 상세 구축요건 (Process / Activity / 기능명 / 상세 구축요건 / 설명)
+ *
+ * Phase별 그룹:
+ *   planning     - request-form, project-create, planning-doc, model-doc
+ *   review       - pre-review-request, pre-review-result, risk-assessment
+ *   development  - dev-plan, risk-plan, risk-plan-approval, governance-approval, dev-request, dev-progress
+ *   verification - pre-op-verification, verification-adequacy, third-party-verification, op-approval-request, deployment-approval, deployment
+ *   operations   - improvement
  */
+
+import type { FlowPhaseId } from "./flow";
 
 export interface FlowFeatureDetail {
   /** 기능명 */
@@ -19,9 +28,93 @@ export interface FlowFeatureDetail {
   options?: string[];
 }
 
+/** Phase별 요약 설명 */
+export interface PhaseSummary {
+  title: string;
+  description: string;
+  totalSteps: number;
+  enabledSteps: number;
+}
+
 type StepRequirements = Record<string, FlowFeatureDetail[]>;
 
+// ─── Phase 요약 (KO) ───────────────────────────────────
+
+const PHASE_SUMMARIES_KO: Record<FlowPhaseId, PhaseSummary> = {
+  planning: {
+    title: "기획",
+    description: "AI 서비스 요청서 작성부터 기획서, 모델설명서까지 서비스 도입의 기초를 수립합니다.",
+    totalSteps: 4,
+    enabledSteps: 1,
+  },
+  review: {
+    title: "검토/평가",
+    description: "사전검토 요청, 위험성 평가, 영향도/안전성 평가를 통해 AI 서비스의 리스크를 식별합니다.",
+    totalSteps: 3,
+    enabledSteps: 2,
+  },
+  development: {
+    title: "개발",
+    description: "개발 계획 수립, 위험 관리 계획, 거버넌스 승인을 거쳐 실제 개발을 진행합니다.",
+    totalSteps: 7,
+    enabledSteps: 2,
+  },
+  verification: {
+    title: "검증/배포",
+    description: "운영 전 검증, 제3자 평가, 배포 승인 등 운영 환경 이관 전 최종 검증을 수행합니다.",
+    totalSteps: 7,
+    enabledSteps: 0,
+  },
+  operations: {
+    title: "운영/개선",
+    description: "통합 대시보드를 통한 실시간 모니터링과 지속적 개선 관리를 수행합니다.",
+    totalSteps: 2,
+    enabledSteps: 1,
+  },
+};
+
+const PHASE_SUMMARIES_EN: Record<FlowPhaseId, PhaseSummary> = {
+  planning: {
+    title: "Planning",
+    description: "Establish the foundation for AI service adoption, from request forms to planning docs and model descriptions.",
+    totalSteps: 4,
+    enabledSteps: 1,
+  },
+  review: {
+    title: "Review & Assessment",
+    description: "Identify AI service risks through pre-review requests, risk assessments, and impact/safety evaluations.",
+    totalSteps: 3,
+    enabledSteps: 2,
+  },
+  development: {
+    title: "Development",
+    description: "Proceed with development after establishing development plans, risk management plans, and governance approvals.",
+    totalSteps: 7,
+    enabledSteps: 2,
+  },
+  verification: {
+    title: "Verification & Deployment",
+    description: "Perform final verification before operation including pre-op verification, third-party evaluation, and deployment approvals.",
+    totalSteps: 7,
+    enabledSteps: 0,
+  },
+  operations: {
+    title: "Operations & Improvement",
+    description: "Real-time monitoring via integrated dashboard and continuous improvement management.",
+    totalSteps: 2,
+    enabledSteps: 1,
+  },
+};
+
 const KO: StepRequirements = {
+  "request-form": [
+    {
+      featureName: "AI 서비스 기획서 요청",
+      requirement: "AI 서비스 도입을 위한 기획서를 작성합니다. 서비스명, 목적, 대상 업무, 예상 효과 등을 입력하고 관련 자료를 첨부합니다.",
+      description: "AI 서비스 도입의 첫 단계로 기획 의도와 범위를 정의합니다.",
+      actionButtons: ["save", "confirm"],
+    }
+  ],
   "project-create": [
     {
       featureName: "프로젝트 목록 및 진행상태 (Project List & Status)",
@@ -413,7 +506,14 @@ const KO: StepRequirements = {
 };
 
 const EN: StepRequirements = {
-
+  "request-form": [
+    {
+      featureName: "AI Service Request Form",
+      requirement: "Create a planning request for AI service adoption. Input service name, purpose, target tasks, expected effects, and attach related materials.",
+      description: "Define the planning intent and scope as the first step of AI service adoption.",
+      actionButtons: ["save", "confirm"],
+    }
+  ],
   "model-doc": [
     {
       featureName: "AI Service Overview",
@@ -791,4 +891,20 @@ export function getFlowRequirements(
 ): FlowFeatureDetail[] {
   const lang = locale.startsWith("ko") ? KO : EN;
   return lang[stepId] ?? [];
+}
+
+/** Phase별 요약 정보 반환 */
+export function getPhaseSummary(
+  phaseId: FlowPhaseId,
+  locale: string
+): PhaseSummary {
+  const summaries = locale.startsWith("ko") ? PHASE_SUMMARIES_KO : PHASE_SUMMARIES_EN;
+  return summaries[phaseId];
+}
+
+/** 전체 Phase 요약 목록 반환 */
+export function getAllPhaseSummaries(
+  locale: string
+): Record<FlowPhaseId, PhaseSummary> {
+  return locale.startsWith("ko") ? PHASE_SUMMARIES_KO : PHASE_SUMMARIES_EN;
 }

@@ -9,41 +9,31 @@ export const ROUTE_PATHS = {
   SLLM_AUTOMATION: "/sllm-automation",
   SERVICE_DETAIL: "/service/:id",
   ENERGY_INTRO: "/energy-intro",
-  // AI 거버넌스 플로우 (flowchart 기준)
+  // AI 거버넌스 플로우 - 동적 라우트 (개별 step 경로는 FLOW_STEPS에서 관리)
   FLOW: "/flow",
   FLOW_STEP: "/flow/:stepId",
+  // 자주 참조되는 진입점만 단축 경로로 유지
   FLOW_REQUEST_FORM: "/flow/request-form",
-  FLOW_PROJECT_CREATE: "/flow/project-create",
-  FLOW_PLANNING_DOC: "/flow/planning-doc",
-  FLOW_MODEL_DOC: "/flow/model-doc",
-  FLOW_PRE_REVIEW_REQUEST: "/flow/pre-review-request",
-  FLOW_RISK_ASSESSMENT: "/flow/risk-assessment",
-  FLOW_PRE_REVIEW_RESULT: "/flow/pre-review-result",
-  FLOW_DEV_PLAN: "/flow/dev-plan",
-  FLOW_RISK_PLAN: "/flow/risk-plan",
-  FLOW_RISK_LEVEL_JUDGE: "/flow/risk-level-judge",
-  FLOW_RISK_PLAN_APPROVAL: "/flow/risk-plan-approval",
-  FLOW_GOVERNANCE_APPROVAL: "/flow/governance-approval",
-  FLOW_DEV_REQUEST: "/flow/dev-request",
-  FLOW_DEV_PROGRESS: "/flow/dev-progress",
-  FLOW_PRE_OP_VERIFICATION: "/flow/pre-op-verification",
-  FLOW_VERIFICATION_BRANCH: "/flow/verification-branch",
-  FLOW_VERIFICATION_ADEQUACY: "/flow/verification-adequacy",
-  FLOW_THIRD_PARTY_VERIFICATION: "/flow/third-party-verification",
-  FLOW_OP_APPROVAL_REQUEST: "/flow/op-approval-request",
-  FLOW_DEPLOYMENT_APPROVAL: "/flow/deployment-approval",
-  FLOW_DEPLOYMENT: "/flow/deployment",
-  FLOW_IMPROVEMENT: "/flow/improvement",
 } as const;
 
 export {
+  // Phase hierarchy
+  FLOW_PHASE_IDS,
+  FLOW_PHASES,
+  // Steps
   FLOW_STEPS,
   FLOW_STEP_IDS,
+  // Lookup helpers
   getFlowStepByPath,
   getFlowStepById,
   getPrevPath,
+  getPhaseByStepId,
+  getEnabledStepsInPhase,
+  getEnabledSteps,
+  getStepIndexInPhase,
+  getPhaseIndex,
 } from "./flow";
-export type { FlowStepId, FlowStepDef, FlowStepBranch } from "./flow";
+export type { FlowPhaseId, FlowPhase, FlowStepId, FlowStepDef, FlowStepBranch } from "./flow";
 
 export {
   LIFECYCLE_STATE_IDS,

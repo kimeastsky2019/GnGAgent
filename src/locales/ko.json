@@ -96,6 +96,28 @@
         "sllm": "sLLM 자동화",
         "sllm_desc": "소형 언어모델 기반 AI 평가 자동화"
     },
+    "phase": {
+        "planning": {
+            "title": "기획",
+            "description": "AI 서비스 요청서 작성부터 기획서, 모델설명서까지 서비스 도입의 기초를 수립합니다."
+        },
+        "review": {
+            "title": "검토/평가",
+            "description": "사전검토 요청, 위험성 평가, 영향도/안전성 평가를 통해 AI 서비스의 리스크를 식별합니다."
+        },
+        "development": {
+            "title": "개발",
+            "description": "개발 계획 수립, 위험 관리 계획, 거버넌스 승인을 거쳐 실제 개발을 진행합니다."
+        },
+        "verification": {
+            "title": "검증/배포",
+            "description": "운영 전 검증, 제3자 평가, 배포 승인 등 운영 환경 이관 전 최종 검증을 수행합니다."
+        },
+        "operations": {
+            "title": "운영/개선",
+            "description": "통합 대시보드를 통한 실시간 모니터링과 지속적 개선 관리를 수행합니다."
+        }
+    },
     "flow": {
         "progress_label": "플로우 진행률",
         "btn_prev": "이전",

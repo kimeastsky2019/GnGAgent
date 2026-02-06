@@ -7,8 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { getFlowStepById, getPrevPath, FLOW_STEPS } from "@/lib/flow";
-import { getFlowRequirements } from "@/lib/flowRequirements";
+import { getFlowStepById, getPrevPath, FLOW_STEPS, getPhaseByStepId, getEnabledSteps, getStepIndexInPhase, getEnabledStepsInPhase } from "@/lib/flow";
+import { getFlowRequirements, getPhaseSummary } from "@/lib/flowRequirements";
 import { ROUTE_PATHS } from "@/lib";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChevronLeft, ChevronRight, GitBranch, ListChecks, Brain, Sparkles, ShieldCheck, Zap, Bot, MessageSquare, BookOpen, Wand2, Search, Save, Paperclip, FileText, Upload, CheckCircle2, XCircle, AlertTriangle, Send } from "lucide-react";
@@ -140,9 +140,14 @@ export default function FlowStepPage() {
     toast.success(i18n.language.startsWith('ko') ? "임시 저장되었습니다." : "Draft saved successfully.");
   };
 
-  const stepOrder = Object.keys(FLOW_STEPS).indexOf(stepId);
-  const totalSteps = Object.keys(FLOW_STEPS).filter((id) => id !== "dashboard").length;
-  const progress = totalSteps > 0 ? Math.round((stepOrder / totalSteps) * 100) : 0;
+  const enabledSteps = getEnabledSteps();
+  const enabledIndex = enabledSteps.findIndex((s) => s.id === stepId);
+  const totalEnabled = enabledSteps.filter((s) => s.id !== "dashboard").length;
+  const progress = totalEnabled > 0 ? Math.round((enabledIndex / totalEnabled) * 100) : 0;
+  const currentPhase = getPhaseByStepId(stepId);
+  const phaseSummary = currentPhase ? getPhaseSummary(currentPhase.id, i18n.language) : null;
+  const stepInPhaseIndex = getStepIndexInPhase(stepId);
+  const phaseEnabledSteps = currentPhase ? getEnabledStepsInPhase(currentPhase.id) : [];
 
   const handleCheck = (id: string, checked: boolean) => {
     setCheckedItems(prev => ({ ...prev, [id]: checked }));
@@ -305,10 +310,25 @@ export default function FlowStepPage() {
           <div className="absolute inset-0 bg-white/40 backdrop-blur-[2px]" />
 
           {/* Centered Content */}
-          <div className="relative z-10 flex flex-col items-center gap-6 max-w-4xl px-4">
-            <div className="font-bold text-sm tracking-[0.2em] uppercase text-foreground/80">
-              Total {totalSteps} Steps
-            </div>
+          <div className="relative z-10 flex flex-col items-center gap-5 max-w-4xl px-4">
+            {/* Phase Breadcrumb */}
+            {phaseSummary && (
+              <div className="flex items-center gap-2 text-sm font-bold tracking-wide text-foreground/70">
+                <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-widest">
+                  {phaseSummary.title}
+                </span>
+                {phaseEnabledSteps.length > 1 && (
+                  <>
+                    <span className="text-foreground/30">/</span>
+                    <span className="text-xs text-foreground/50">
+                      {i18n.language.startsWith('ko')
+                        ? `${stepInPhaseIndex + 1} / ${phaseEnabledSteps.length}`
+                        : `Step ${stepInPhaseIndex + 1} of ${phaseEnabledSteps.length}`}
+                    </span>
+                  </>
+                )}
+              </div>
+            )}
 
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight text-foreground leading-tight">
               {t(step.titleKey)}

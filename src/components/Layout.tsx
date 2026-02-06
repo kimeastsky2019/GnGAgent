@@ -39,7 +39,7 @@ const mainNavItems: NavItem[] = [
   { nameKey: "nav.home", path: ROUTE_PATHS.HOME, icon: Home, descriptionKey: "nav.home_desc" },
   { nameKey: "flow.nav_start", path: ROUTE_PATHS.FLOW_REQUEST_FORM, icon: ListOrdered, descriptionKey: "flow.nav_start_desc", matchPath: (path) => path.startsWith("/flow") },
   { nameKey: "flow.nav_dashboard", path: ROUTE_PATHS.DASHBOARD, icon: LayoutDashboard, descriptionKey: "nav.dashboard_desc" },
-  { nameKey: "flow.nav_improvement", path: ROUTE_PATHS.FLOW_IMPROVEMENT, icon: TrendingUp, descriptionKey: "nav.improvement_desc" },
+  { nameKey: "flow.nav_improvement", path: ROUTE_PATHS.MONITORING, icon: TrendingUp, descriptionKey: "nav.improvement_desc" },
   { nameKey: "nav.assessment", path: ROUTE_PATHS.ASSESSMENT, icon: FileCheck, descriptionKey: "nav.assessment_desc" },
   { nameKey: "nav.technical", path: ROUTE_PATHS.TECHNICAL_VALIDATION, icon: ShieldCheck, descriptionKey: "nav.technical_desc" },
   { nameKey: "nav.monitoring", path: ROUTE_PATHS.MONITORING, icon: Activity, descriptionKey: "nav.monitoring_desc" },
