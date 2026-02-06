@@ -81,6 +81,8 @@
         "pts": "pts"
     },
     "nav": {
+        "group_work": "Workflow",
+        "group_tools": "Analytics",
         "home": "Home",
         "home_desc": "System overview and architecture",
         "dashboard_desc": "Enterprise AI risk command center",

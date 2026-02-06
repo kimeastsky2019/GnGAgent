@@ -81,6 +81,8 @@
         "pts": "pts"
     },
     "nav": {
+        "group_work": "작업",
+        "group_tools": "분석 도구",
         "home": "홈",
         "home_desc": "시스템 개요 및 아키텍처",
         "dashboard_desc": "전사 AI 위험 커맨드 센터",

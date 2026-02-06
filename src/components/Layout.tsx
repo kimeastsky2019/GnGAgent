@@ -19,6 +19,7 @@ import {
   ListOrdered,
   Brain,
   TrendingUp,
+  Wrench,
   Mail,
   MapPin,
   Building2
@@ -26,25 +27,41 @@ import {
 import { ROUTE_PATHS, cn } from "@/lib/index";
 import { motion, AnimatePresence } from "framer-motion";
 
+// ─── Navigation 구조 ───────────────────────────────────
+// 3개 그룹: 작업(Work) / 관제(Control) / 도구(Tools)
+
 interface NavItem {
   nameKey: string;
   path: string;
   icon: React.ElementType;
   descriptionKey?: string;
-  /** 플로우 단계 등 하위 경로일 때도 활성 표시 */
   matchPath?: (path: string) => boolean;
 }
 
-const mainNavItems: NavItem[] = [
-  { nameKey: "nav.home", path: ROUTE_PATHS.HOME, icon: Home, descriptionKey: "nav.home_desc" },
-  { nameKey: "flow.nav_start", path: ROUTE_PATHS.FLOW_REQUEST_FORM, icon: ListOrdered, descriptionKey: "flow.nav_start_desc", matchPath: (path) => path.startsWith("/flow") },
-  { nameKey: "flow.nav_dashboard", path: ROUTE_PATHS.DASHBOARD, icon: LayoutDashboard, descriptionKey: "nav.dashboard_desc" },
-  { nameKey: "flow.nav_improvement", path: ROUTE_PATHS.MONITORING, icon: TrendingUp, descriptionKey: "nav.improvement_desc" },
-  { nameKey: "nav.assessment", path: ROUTE_PATHS.ASSESSMENT, icon: FileCheck, descriptionKey: "nav.assessment_desc" },
-  { nameKey: "nav.technical", path: ROUTE_PATHS.TECHNICAL_VALIDATION, icon: ShieldCheck, descriptionKey: "nav.technical_desc" },
-  { nameKey: "nav.monitoring", path: ROUTE_PATHS.MONITORING, icon: Activity, descriptionKey: "nav.monitoring_desc" },
-  { nameKey: "nav.compliance", path: ROUTE_PATHS.COMPLIANCE, icon: Scale, descriptionKey: "nav.compliance_desc" },
-  { nameKey: "nav.sllm", path: ROUTE_PATHS.SLLM_AUTOMATION, icon: Brain, descriptionKey: "nav.sllm_desc" },
+interface NavGroup {
+  labelKey: string;
+  items: NavItem[];
+}
+
+const navGroups: NavGroup[] = [
+  {
+    labelKey: "nav.group_work",
+    items: [
+      { nameKey: "nav.home", path: ROUTE_PATHS.HOME, icon: Home, descriptionKey: "nav.home_desc" },
+      { nameKey: "flow.nav_start", path: ROUTE_PATHS.FLOW_REQUEST_FORM, icon: ListOrdered, descriptionKey: "flow.nav_start_desc", matchPath: (path) => path.startsWith("/flow") },
+      { nameKey: "flow.nav_dashboard", path: ROUTE_PATHS.DASHBOARD, icon: LayoutDashboard, descriptionKey: "nav.dashboard_desc" },
+    ],
+  },
+  {
+    labelKey: "nav.group_tools",
+    items: [
+      { nameKey: "nav.assessment", path: ROUTE_PATHS.ASSESSMENT, icon: FileCheck, descriptionKey: "nav.assessment_desc" },
+      { nameKey: "nav.technical", path: ROUTE_PATHS.TECHNICAL_VALIDATION, icon: ShieldCheck, descriptionKey: "nav.technical_desc" },
+      { nameKey: "nav.monitoring", path: ROUTE_PATHS.MONITORING, icon: Activity, descriptionKey: "nav.monitoring_desc" },
+      { nameKey: "nav.compliance", path: ROUTE_PATHS.COMPLIANCE, icon: Scale, descriptionKey: "nav.compliance_desc" },
+      { nameKey: "nav.sllm", path: ROUTE_PATHS.SLLM_AUTOMATION, icon: Brain, descriptionKey: "nav.sllm_desc" },
+    ],
+  },
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {
@@ -117,36 +134,57 @@ export function Layout({ children }: { children: React.ReactNode }) {
             isSidebarOpen ? "w-64" : "w-20"
           )}
         >
-          <div className="flex-1 py-6 flex flex-col gap-1 overflow-y-auto px-3">
-            {mainNavItems.map((item) => (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                className={({ isActive }) => {
-                  const active = item.matchPath ? item.matchPath(location.pathname) : isActive;
-                  return cn(
-                    "flex items-center gap-3 px-3 py-3 rounded-lg transition-all group relative",
-                    active
-                      ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-md"
-                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                  );
-                }}
-              >
-                <item.icon size={20} className={cn("shrink-0", isSidebarOpen ? "" : "mx-auto")} />
-                {isSidebarOpen && (
-                  <div className="flex flex-col overflow-hidden">
-                    <span className="text-sm font-semibold truncate">{t(item.nameKey)}</span>
-                    {item.descriptionKey && (
-                      <span className="text-[10px] opacity-70 truncate">{t(item.descriptionKey)}</span>
+          <div className="flex-1 py-4 flex flex-col gap-1 overflow-y-auto px-3">
+            {navGroups.map((group, gIdx) => (
+              <div key={group.labelKey}>
+                {/* Group divider (skip for first group) */}
+                {gIdx > 0 && (
+                  <div className="my-3 mx-2">
+                    {isSidebarOpen ? (
+                      <div className="flex items-center gap-2">
+                        <div className="h-px flex-1 bg-sidebar-border" />
+                        <span className="text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest shrink-0">
+                          {t(group.labelKey)}
+                        </span>
+                        <div className="h-px flex-1 bg-sidebar-border" />
+                      </div>
+                    ) : (
+                      <div className="h-px bg-sidebar-border" />
                     )}
                   </div>
                 )}
-                {!isSidebarOpen && (
-                  <div className="absolute left-16 bg-popover text-popover-foreground px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none shadow-lg border border-border">
-                    {t(item.nameKey)}
-                  </div>
-                )}
-              </NavLink>
+
+                {group.items.map((item) => (
+                  <NavLink
+                    key={item.path + item.nameKey}
+                    to={item.path}
+                    className={({ isActive }) => {
+                      const active = item.matchPath ? item.matchPath(location.pathname) : isActive;
+                      return cn(
+                        "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all group relative",
+                        active
+                          ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-md"
+                          : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                      );
+                    }}
+                  >
+                    <item.icon size={18} className={cn("shrink-0", isSidebarOpen ? "" : "mx-auto")} />
+                    {isSidebarOpen && (
+                      <div className="flex flex-col overflow-hidden">
+                        <span className="text-sm font-semibold truncate">{t(item.nameKey)}</span>
+                        {item.descriptionKey && (
+                          <span className="text-[10px] opacity-70 truncate">{t(item.descriptionKey)}</span>
+                        )}
+                      </div>
+                    )}
+                    {!isSidebarOpen && (
+                      <div className="absolute left-16 bg-popover text-popover-foreground px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none shadow-lg border border-border">
+                        {t(item.nameKey)}
+                      </div>
+                    )}
+                  </NavLink>
+                ))}
+              </div>
             ))}
           </div>
 
@@ -192,24 +230,39 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   </button>
                 </div>
 
-                <nav className="flex flex-col gap-2">
-                  {mainNavItems.map((item) => (
-                    <NavLink
-                      key={item.path}
-                      to={item.path}
-                      className={({ isActive }) => {
-                        const active = item.matchPath ? item.matchPath(location.pathname) : isActive;
-                        return cn(
-                          "flex items-center gap-4 px-4 py-3 rounded-xl transition-all",
-                          active
-                            ? "bg-primary text-primary-foreground shadow-lg"
-                            : "text-muted-foreground hover:bg-accent hover:text-foreground"
-                        );
-                      }}
-                    >
-                      <item.icon size={22} />
-                      <span className="font-medium">{t(item.nameKey)}</span>
-                    </NavLink>
+                <nav className="flex flex-col gap-1">
+                  {navGroups.map((group, gIdx) => (
+                    <div key={group.labelKey}>
+                      {gIdx > 0 && (
+                        <div className="my-3 px-2">
+                          <div className="flex items-center gap-2">
+                            <div className="h-px flex-1 bg-border/50" />
+                            <span className="text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest">
+                              {t(group.labelKey)}
+                            </span>
+                            <div className="h-px flex-1 bg-border/50" />
+                          </div>
+                        </div>
+                      )}
+                      {group.items.map((item) => (
+                        <NavLink
+                          key={item.path + item.nameKey}
+                          to={item.path}
+                          className={({ isActive }) => {
+                            const active = item.matchPath ? item.matchPath(location.pathname) : isActive;
+                            return cn(
+                              "flex items-center gap-4 px-4 py-3 rounded-xl transition-all",
+                              active
+                                ? "bg-primary text-primary-foreground shadow-lg"
+                                : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                            );
+                          }}
+                        >
+                          <item.icon size={20} />
+                          <span className="font-medium">{t(item.nameKey)}</span>
+                        </NavLink>
+                      ))}
+                    </div>
                   ))}
                 </nav>
 
