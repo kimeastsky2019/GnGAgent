@@ -15,6 +15,7 @@ import { Zap, Sun, Battery, Home, ArrowUpDown, Lightbulb, Leaf, BarChart3, Messa
 import PlatformHeader from "@/components/dashboard/platform-header";
 import EnergyOverview from "@/components/dashboard/energy-overview";
 import TabMenu from "@/components/dashboard/tab-menu";
+import KnowledgeWiki from "@/components/dashboard/knowledge-wiki";
 const Index = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [energyData, setEnergyData] = useState({
@@ -1296,6 +1297,11 @@ const Index = () => {
         {/* Main Platform Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabMenu />
+
+          {/* AI Knowledge Wiki — llmwiki × Nanogrid 통합 (지식DB + 인사이트 위키) */}
+          <TabsContent value="wiki" className="space-y-6">
+            <KnowledgeWiki />
+          </TabsContent>
 
           {/* Energy Dashboard */}
           <TabsContent value="dashboard" className="space-y-6">

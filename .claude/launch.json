@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "nanogrid-dashboard",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "Nanogrid/nanogrid_AI_management_system", "run", "dev"],
+      "port": 8080
+    }
+  ]
+}

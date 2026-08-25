@@ -1,0 +1,49 @@
+# NanoGrid Knowledge Wiki 설정
+# llmwiki 의 설정 철학을 계승: provider 한 줄로 Claude ↔ 사내 Ollama 전환.
+
+project:
+  name: "NanoGrid Knowledge Wiki"
+
+db:
+  # 환경변수 DATABASE_URL 이 있으면 그 값이 우선
+  url: "postgresql://ngadmin:ngpass@localhost:5433/nanogrid"
+
+llm:
+  # claude | ollama | template
+  # template: LLM 없이 사실만으로 문서 생성 (스모크 테스트 / API 키 없는 환경)
+  provider: template
+
+  claude:
+    model: claude-sonnet-5
+    max_tokens: 8000
+    effort: medium
+
+  ollama:
+    base_url: "http://211.119.38.216:11434"
+    model: "qwen2.5-coder:32b"
+    num_ctx: 32768
+    keep_alive: "30m"
+
+insight:
+  # 인사이트 생성 언어
+  language: ko
+  # 문서 파일 아카이브 디렉터리 (DB 저장과 별개의 git-friendly 사본)
+  docs_dir: "./docs/ng"
+  # worker --loop 주기 (초). 하루 1회 생성이 기본이지만 루프는 1시간마다 깨어나
+  # '어제 브리프 없음 / 주간 리포트 없음 / 새 이벤트' 를 확인한다.
+  loop_interval_sec: 3600
+
+ingest:
+  # 시뮬레이터 틱 간격(초) 과 데이터 해상도(분)
+  tick_sec: 15
+  step_min: 15
+  # 최초 기동 시 백필 일수 (예측 실험·인사이트에 필요한 이력 확보)
+  backfill_days: 21
+
+forecast:
+  # wiki-server 가 프록시할 forecast-svc 주소
+  svc_url: "http://localhost:8801"
+
+server:
+  host: "0.0.0.0"
+  port: 8720

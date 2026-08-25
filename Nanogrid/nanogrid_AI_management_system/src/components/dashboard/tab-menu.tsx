@@ -6,7 +6,8 @@ const tabStyles: Record<string, string> = {
   analytics: "data-[state=active]:from-purple-600 data-[state=active]:to-fuchsia-500",
   hvac: "data-[state=active]:from-teal-600 data-[state=active]:to-cyan-500",
   ontology: "data-[state=active]:from-emerald-600 data-[state=active]:to-lime-500",
-  trading: "data-[state=active]:from-pink-600 data-[state=active]:to-rose-500"
+  trading: "data-[state=active]:from-pink-600 data-[state=active]:to-rose-500",
+  wiki: "data-[state=active]:from-indigo-600 data-[state=active]:to-violet-500"
 };
 
 const tabs = [
@@ -15,11 +16,12 @@ const tabs = [
   { value: "analytics", label: "Module B: Analytics" },
   { value: "hvac", label: "Module C: HVAC" },
   { value: "ontology", label: "Ontology Management" },
-  { value: "trading", label: "P2P Trading" }
+  { value: "trading", label: "P2P Trading" },
+  { value: "wiki", label: "AI Knowledge Wiki" }
 ];
 
 const TabMenu = () => (
-  <TabsList className="grid w-full grid-cols-6 gap-2 bg-transparent p-0">
+  <TabsList className="grid w-full grid-cols-7 gap-2 bg-transparent p-0">
     {tabs.map(tab => (
       <TabsTrigger
         key={tab.value}

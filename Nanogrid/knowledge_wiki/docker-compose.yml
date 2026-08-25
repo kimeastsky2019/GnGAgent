@@ -1,0 +1,80 @@
+# NanoGrid Knowledge Wiki — 통합 기동 (기획서 §2 배포안)
+# timescaledb + wiki-server + forecast-svc + ingest + insight-worker
+# 기존 nanogrid-sim compose 와 공존 가능 (포트: DB 5433 / 포털 8720 / 예측 8801)
+version: "3.9"
+
+services:
+  db:
+    image: timescale/timescaledb-ha:pg16
+    container_name: ngwiki_db
+    environment:
+      POSTGRES_USER: ngadmin
+      POSTGRES_PASSWORD: ngpass
+      POSTGRES_DB: nanogrid
+    ports:
+      - "5433:5432"
+    volumes:
+      - ngwiki_db_data:/var/lib/postgresql/data
+      - ../nanogrid-sim/db/init.sql:/docker-entrypoint-initdb.d/00_init.sql:ro
+      - ./db/10_knowledge_schema.sql:/docker-entrypoint-initdb.d/10_knowledge.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  wiki-server:
+    build: .
+    container_name: ngwiki_server
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://ngadmin:ngpass@db:5432/nanogrid
+      FORECAST_SVC_URL: http://forecast-svc:8801
+    ports:
+      - "8720:8720"
+
+  forecast-svc:
+    build: .
+    container_name: ngwiki_forecast
+    command: ["uvicorn", "ngwiki.forecast.app:app", "--host", "0.0.0.0", "--port", "8801"]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://ngadmin:ngpass@db:5432/nanogrid
+    ports:
+      - "8801:8801"
+
+  ingest:
+    build: .
+    container_name: ngwiki_ingest
+    command: ["python", "-m", "ngwiki.ingest.simulator"]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://ngadmin:ngpass@db:5432/nanogrid
+    restart: unless-stopped
+
+  insight-worker:
+    build: .
+    container_name: ngwiki_insight
+    command: ["python", "-m", "ngwiki.insight.worker", "all", "--backfill", "7", "--loop"]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://ngadmin:ngpass@db:5432/nanogrid
+      # LLM 전환: template(기본, 키 불필요) | claude | ollama
+      NGWIKI_LLM_PROVIDER: ${NGWIKI_LLM_PROVIDER:-template}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      NGWIKI_DOCS_DIR: /data/docs/ng
+    volumes:
+      - ngwiki_docs:/data/docs
+    restart: unless-stopped
+
+volumes:
+  ngwiki_db_data:
+  ngwiki_docs:
