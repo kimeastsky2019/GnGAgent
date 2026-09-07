@@ -168,6 +168,55 @@ def set_pair_approval(pair_id: int, req: ApprovalRequest):
     return {"id": pair_id, "status": req.status}
 
 
+class PromoteRequest(BaseModel):
+    tab: str = Field("learn", pattern="^(code|data|knowledge|learn)$")
+    reference_answer: str | None = None   # 수정본 — 없으면 페어의 답변 그대로
+    decided_by: str = "operator"
+
+
+@router.post("/pairs/{pair_id}/promote")
+def promote_pair(pair_id: int, req: PromoteRequest):
+    """챗 문답을 골든셋(draft)으로 승격한다.
+
+    오염 방지 (기획 v0.2 §3): 승격된 페어는 human_approval='golden' 으로 바뀌어
+    학습 데이터에서 영구 제외된다 — 같은 문답이 시험지와 교과서에 동시에 있을 수 없다.
+    """
+    pair = one(cfg.db_url, "SELECT * FROM ng.training_pairs WHERE id=%s", (pair_id,))
+    if not pair:
+        raise HTTPException(404, "페어 없음")
+    if pair["human_approval"] == "golden":
+        raise HTTPException(409, "이미 골든으로 승격된 페어입니다")
+    dup = one(cfg.db_url,
+              "SELECT id FROM ng.golden_questions WHERE question=%s",
+              (pair["question"],))
+    if dup:
+        raise HTTPException(409, f"같은 질문의 골든 문항이 이미 있습니다 (id={dup['id']})")
+
+    reference = (req.reference_answer or pair["answer"]).strip()
+    if len(reference) < 20:
+        raise HTTPException(422, "기준 답변이 너무 짧습니다")
+
+    conn = connect(cfg.db_url)
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """INSERT INTO ng.golden_questions(tab, question, reference_answer, reference_model)
+                   VALUES (%s, %s, %s, %s) RETURNING id""",
+                (req.tab, pair["question"], reference,
+                 f"promoted:{pair['answer_model']}"))
+            golden_id = cur.fetchone()["id"]
+            cur.execute(
+                """UPDATE ng.training_pairs
+                   SET human_approval='golden', approved_by=%s, approved_at=now()
+                   WHERE id=%s""",
+                (req.decided_by, pair_id))
+    finally:
+        conn.close()
+    return {"golden_id": golden_id, "pair_id": pair_id,
+            "status": "draft",
+            "note": "골든 draft 등록 — 검수 승인 후 CES 에 포함. 이 페어는 학습에서 제외됩니다"}
+
+
 # --------------------------------------------------------------------------- #
 # 골든셋 — Claude(교사) 기준 답변. status=approved 만 CES 측정에 사용.
 # --------------------------------------------------------------------------- #

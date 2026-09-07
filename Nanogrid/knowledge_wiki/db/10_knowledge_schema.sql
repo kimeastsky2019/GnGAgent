@@ -226,7 +226,8 @@ CREATE TABLE IF NOT EXISTS ng.training_pairs(
   answer_model  TEXT NOT NULL DEFAULT '',
   verdict_json  JSONB,                           -- judge 채점(축별)
   human_approval TEXT NOT NULL DEFAULT 'pending'
-                 CHECK (human_approval IN ('pending','approved','edited','rejected')),
+                 -- 'golden' = 골든셋으로 승격되어 학습에서 영구 제외 (오염 방지)
+                 CHECK (human_approval IN ('pending','approved','edited','rejected','golden')),
   approved_by   TEXT,
   approved_at   TIMESTAMPTZ,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
