@@ -120,6 +120,36 @@ def chat(req: ChatRequest):
 # --------------------------------------------------------------------------- #
 # training_pairs — 승인분만 학습에 쓴다
 # --------------------------------------------------------------------------- #
+class PairCreateRequest(BaseModel):
+    """외부 챗 UI(서버 chat 라우터 등)가 문답을 학습 페어로 적재할 때 쓴다.
+
+    /chat 은 자체 적재하지만, 다른 경로로 생성된 문답도 같은 풀에 모여야
+    승인·골든 승격이 한 흐름이 된다 (기획 v0.2 §5: 모든 상호작용을 페어로).
+    """
+
+    question: str = Field(..., min_length=2, max_length=4000)
+    answer: str = Field(..., min_length=1)
+    context: str = Field("", max_length=8000)
+    answer_model: str = Field("", max_length=100)
+    source_tab: str = Field("learn", pattern="^(code|data|knowledge|learn)$")
+
+
+@router.post("/pairs")
+def create_pair(req: PairCreateRequest):
+    conn = connect(cfg.db_url)
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """INSERT INTO ng.training_pairs(source_tab, question, context, answer, answer_model)
+                   VALUES (%s, %s, %s, %s, %s) RETURNING id""",
+                (req.source_tab, req.question, req.context, req.answer[:8000],
+                 req.answer_model))
+            pair_id = cur.fetchone()["id"]
+    finally:
+        conn.close()
+    return {"pair_id": pair_id, "human_approval": "pending"}
+
+
 class ApprovalRequest(BaseModel):
     status: str = Field(..., pattern="^(approved|edited|rejected|pending)$")
     edited_answer: str | None = None
