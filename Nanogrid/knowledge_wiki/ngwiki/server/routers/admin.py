@@ -165,6 +165,15 @@ def decide(item_id: int, req: DecisionRequest):
             if not row:
                 raise HTTPException(404, "대기 중인 항목이 아닙니다")
             # 연동 상태 반영 — 큐 결정이 원본 객체의 상태를 함께 바꾼다
+            if row["item_type"] == "forecast_model_change" and req.status == "approved":
+                # L2 파이프라인 (1차년도 파일럿): 승인 즉시 새 모델로 day-ahead 발행
+                target, model = row["ref_id"].split(":", 1)
+                try:
+                    with httpx.Client(timeout=httpx.Timeout(120.0, connect=5.0)) as client:
+                        client.post(f"{cfg.forecast_svc_url.rstrip('/')}/publish_dayahead",
+                                    json={"target": target, "model": model})
+                except httpx.HTTPError:
+                    pass  # 발행 실패해도 결정 기록은 유지 — 다음 제안 주기에 재시도
             if row["item_type"] == "training_pair":
                 cur.execute(
                     """UPDATE ng.training_pairs
@@ -179,6 +188,105 @@ def decide(item_id: int, req: DecisionRequest):
     finally:
         conn.close()
     return {"id": item_id, "status": req.status}
+
+
+# -------------------------------------------------------- 자동화율 계기판 --
+# 1차년도 A트랙: "AI 직원" 체제의 증거 — 최근 7일 자동 수행 vs 인간 개입.
+
+@router.get("/automation")
+def automation(days: int = 7):
+    auto = one(cfg.db_url, """
+        SELECT
+          (SELECT count(*) FROM ng.insight_docs WHERE updated_at > now() - make_interval(days => %(d)s)) AS insight_docs,
+          (SELECT count(DISTINCT (target, model, date_trunc('day', created_at)))
+             FROM ng.forecasts WHERE created_at > now() - make_interval(days => %(d)s)) AS forecast_publishes,
+          (SELECT count(*) FROM ng.training_pairs WHERE created_at > now() - make_interval(days => %(d)s)) AS training_pairs,
+          (SELECT count(*) FROM ng.ces_runs WHERE created_at > now() - make_interval(days => %(d)s)) AS ces_runs,
+          (SELECT count(*) FROM ng.events WHERE ts > now() - make_interval(days => %(d)s)) AS events_detected
+    """, {"d": days})
+    human = one(cfg.db_url, """
+        SELECT
+          (SELECT count(*) FROM ng.approval_queue
+             WHERE decided_at > now() - make_interval(days => %(d)s)) AS approvals_decided,
+          (SELECT count(*) FROM ng.training_pairs
+             WHERE approved_at > now() - make_interval(days => %(d)s)) AS pairs_reviewed
+    """, {"d": days})
+    auto_total = sum(int(v or 0) for v in auto.values())
+    human_total = sum(int(v or 0) for v in human.values())
+    rate = round(auto_total / (auto_total + human_total) * 100, 1) \
+        if (auto_total + human_total) else None
+    return {
+        "days": days,
+        "auto": auto, "auto_total": auto_total,
+        "human": human, "human_total": human_total,
+        "automation_rate_pct": rate,
+        "note": "계측 v0 — 자동 수행 건수 / (자동 + 인간 개입). 1차년도 목표 55%",
+    }
+
+
+# ------------------------------------------- L2 파일럿: 예측 모델 교체 제안 --
+# 에이전트가 전 모델 백테스트로 최적 모델을 찾고, 현재 발행 모델과 다르면
+# L2 승인 항목을 만든다. 사람이 승인하면 decide() 가 새 모델로 발행한다.
+
+class ProposeModelRequest(BaseModel):
+    target: str = "consumption_kw"
+    site_id: int = 1
+
+
+@router.post("/automation/propose_model")
+def propose_model(req: ProposeModelRequest):
+    try:
+        with httpx.Client(timeout=httpx.Timeout(300.0, connect=5.0)) as client:
+            resp = client.post(f"{cfg.forecast_svc_url.rstrip('/')}/select_best",
+                               json={"site_id": req.site_id, "target": req.target,
+                                     "train_days": 14, "test_hours": 24})
+    except httpx.HTTPError as e:
+        raise HTTPException(502, f"forecast-svc 연결 실패: {e}") from e
+    if resp.status_code >= 400:
+        raise HTTPException(resp.status_code, resp.text)
+    ranking = resp.json().get("ranking", [])
+    if not ranking:
+        raise HTTPException(422, "백테스트 결과 없음")
+    best = ranking[0]
+
+    current = one(cfg.db_url, """
+        SELECT model FROM ng.forecasts
+        WHERE site_id=%s AND target=%s ORDER BY created_at DESC LIMIT 1""",
+        (req.site_id, req.target))
+    current_model = current["model"] if current else None
+    if current_model == best["model"]:
+        return {"proposed": False, "reason": "현재 발행 모델이 이미 최적",
+                "model": current_model, "mape": best["metrics"].get("mape_pct")}
+
+    ref_id = f"{req.target}:{best['model']}"
+    dup = one(cfg.db_url, """
+        SELECT id FROM ng.approval_queue
+        WHERE item_type='forecast_model_change' AND ref_id=%s AND status='pending'""",
+        (ref_id,))
+    if dup:
+        return {"proposed": False, "reason": "동일 제안이 이미 승인 대기 중",
+                "queue_id": dup["id"]}
+
+    cur_mape = next((r["metrics"].get("mape_pct") for r in ranking
+                     if r["model"] == current_model), None)
+    from ...db import connect as _connect
+
+    conn = _connect(cfg.db_url)
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """INSERT INTO ng.approval_queue(item_type, ref_id, title, summary, level)
+                   VALUES ('forecast_model_change', %s, %s, %s, 'L2') RETURNING id""",
+                (ref_id,
+                 f"예측 모델 교체 제안: {req.target} → {best['model']}",
+                 f"현재 {current_model or '없음'} (MAPE {cur_mape}%) → 제안 {best['model']} "
+                 f"(MAPE {best['metrics'].get('mape_pct')}%) · 14일 학습/24h 백테스트"))
+            qid = cur.fetchone()["id"]
+    finally:
+        conn.close()
+    return {"proposed": True, "queue_id": qid, "from": current_model,
+            "to": best["model"], "mape": best["metrics"].get("mape_pct"),
+            "note": "L2 — 인간 승인 시 새 모델로 day-ahead 발행"}
 
 
 # ------------------------------------------------------------- 기기 관리 --

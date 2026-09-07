@@ -6,3 +6,4 @@ pyyaml>=6.0
 numpy>=1.26
 pydantic>=2.6
 anthropic>=0.40
+paho-mqtt>=2.0
