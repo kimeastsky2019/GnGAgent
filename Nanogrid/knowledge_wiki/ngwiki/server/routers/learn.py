@@ -41,6 +41,15 @@ CHAT_SYSTEM_KO = """당신은 나노그리드 운영 어시스턴트다.
 - 해석·추정에는 "추정:" 접두어를 붙인다.
 - 간결한 한국어로 답한다."""
 
+# CES 측정용 — 챗봇과 달리 도메인 일반 지식을 허용한다. 골든셋에는 개념형 문항
+# (예: SoC 운전 범위의 이유)이 섞여 있어, '근거만' 규칙을 그대로 쓰면 정답을 알아도
+# "확인 불가"로 답해 accuracy 0 이 된다 (2026-09-07 Grok 측정에서 관찰).
+CES_SYSTEM_KO = """당신은 에너지(나노그리드) 도메인 어시스턴트다.
+- 사이트의 구체 수치는 [근거] 블록에 있는 것만 인용하고, 없으면 "확인 불가"라 한다.
+- 도메인 일반 지식(원리·계산식·운영 관행)은 아는 대로 정확히 설명한다.
+- 불확실한 해석에는 "추정:" 접두어를 붙이고, 모르는 것은 지어내지 않는다.
+- 간결한 한국어로 답한다."""
+
 
 def _gather_context(question: str, site_id: int) -> tuple[str, list[str]]:
     """RAG-lite: 인사이트 문서 검색 + 실시간 KPI 사실. (Y1: 임베딩 RAG 로 교체 예정)"""
@@ -329,7 +338,7 @@ def ces_run(req: CesRunRequest):
     for q in questions:
         context, _ = _gather_context(q["question"], 1)
         prompt = f"[근거]\n{context[:3000]}\n\n[질문]\n{q['question']}"
-        answer, slm_model = _answer_with_provider(CHAT_SYSTEM_KO, prompt)
+        answer, slm_model = _answer_with_provider(CES_SYSTEM_KO, prompt)
         slm_answers.append((q, answer, prompt))
 
     judge_model = None
