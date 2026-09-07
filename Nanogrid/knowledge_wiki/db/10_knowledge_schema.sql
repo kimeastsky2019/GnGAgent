@@ -213,6 +213,80 @@ CREATE TABLE IF NOT EXISTS ng.api_registrations(
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- ---------------------------------------------------------------------------
+-- 기획안 v0.2 §5: 학습 데이터 파이프라인 — "오늘의 로그가 내일의 학습 데이터"
+-- 모든 상호작용을 instruction pair 로 적재. 승인(human_approval)분만 학습에 쓴다.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS ng.training_pairs(
+  id            BIGSERIAL PRIMARY KEY,
+  source_tab    TEXT NOT NULL DEFAULT 'learn',   -- code | data | knowledge | learn
+  question      TEXT NOT NULL,
+  context       TEXT NOT NULL DEFAULT '',        -- 근거(인사이트·SQL·조문 인용)
+  answer        TEXT NOT NULL,
+  answer_model  TEXT NOT NULL DEFAULT '',
+  verdict_json  JSONB,                           -- judge 채점(축별)
+  human_approval TEXT NOT NULL DEFAULT 'pending'
+                 CHECK (human_approval IN ('pending','approved','edited','rejected')),
+  approved_by   TEXT,
+  approved_at   TIMESTAMPTZ,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_tp_approval ON ng.training_pairs(human_approval, created_at DESC);
+
+-- ---------------------------------------------------------------------------
+-- 기획안 v0.2 §3: 골든셋 — Claude 기준 답변. 학습 데이터에 절대 사용 금지(홀드아웃).
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS ng.golden_questions(
+  id               BIGSERIAL PRIMARY KEY,
+  tab              TEXT NOT NULL,                -- code | data | knowledge | learn
+  question         TEXT NOT NULL,
+  context_hint     TEXT NOT NULL DEFAULT '',
+  reference_answer TEXT NOT NULL,                -- Claude(교사) 기준 답변
+  reference_model  TEXT NOT NULL DEFAULT 'claude',
+  status           TEXT NOT NULL DEFAULT 'draft'
+                   CHECK (status IN ('draft','approved','retired')),
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- CES(Claude 동등성 점수) 측정 이력
+CREATE TABLE IF NOT EXISTS ng.ces_runs(
+  id          BIGSERIAL PRIMARY KEY,
+  slm_model   TEXT NOT NULL,
+  judge_model TEXT NOT NULL,
+  n_questions INT NOT NULL,
+  ces         NUMERIC,                           -- sLM 채점 / 기준 채점
+  scores_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS ng.ces_scores(
+  id          BIGSERIAL PRIMARY KEY,
+  run_id      BIGINT NOT NULL REFERENCES ng.ces_runs(id) ON DELETE CASCADE,
+  question_id BIGINT NOT NULL,
+  slm_answer  TEXT NOT NULL DEFAULT '',
+  slm_score   NUMERIC,
+  ref_score   NUMERIC,
+  detail_json JSONB NOT NULL DEFAULT '{}'::jsonb
+);
+
+-- ---------------------------------------------------------------------------
+-- 기획안 v0.2 §4: 승인 게이트 — 에이전트 산출물의 승인/반려와 감사 로그.
+-- L1 은 사후 감사(발행 후 등록), L2+ 는 승인 전 반영 금지.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS ng.approval_queue(
+  id         BIGSERIAL PRIMARY KEY,
+  item_type  TEXT NOT NULL,    -- insight_doc | gov_analysis | training_pair | golden_question | forecast_publish
+  ref_id     TEXT NOT NULL,
+  title      TEXT NOT NULL,
+  summary    TEXT NOT NULL DEFAULT '',
+  level      TEXT NOT NULL DEFAULT 'L1' CHECK (level IN ('L1','L2','L3')),
+  status     TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected')),
+  decided_by TEXT,
+  decided_at TIMESTAMPTZ,
+  note       TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_aq_status ON ng.approval_queue(status, created_at DESC);
+
 -- 기본 사이트 1개 보장
 INSERT INTO ng.sites(name, lat, lon, tz)
 SELECT 'TNO 실증 사이트', 37.5665, 126.9780, 'Asia/Seoul'

@@ -124,6 +124,63 @@ def regenerate(req: RegenerateRequest):
     return {"started": True, "task": req.task, "force": req.force}
 
 
+# ------------------------------------------------------------ 승인 게이트 --
+# 기획안 v0.2 §4: 에이전트 산출물의 승인/반려. 결정 이력이 곧 감사 로그다.
+
+class DecisionRequest(BaseModel):
+    status: str = Field(..., pattern="^(approved|rejected)$")
+    note: str = Field("", max_length=1000)
+    decided_by: str = "operator"
+
+
+@router.get("/approvals")
+def approvals(status: str = "pending", limit: int = 30):
+    rows = query(cfg.db_url, """
+        SELECT id, item_type, ref_id, title, summary, level, status,
+               decided_by, decided_at, note, created_at
+        FROM ng.approval_queue
+        WHERE status = %s ORDER BY created_at DESC LIMIT %s""", (status, limit))
+    counts = one(cfg.db_url, """
+        SELECT count(*) FILTER (WHERE status='pending')  AS pending,
+               count(*) FILTER (WHERE status='approved') AS approved,
+               count(*) FILTER (WHERE status='rejected') AS rejected
+        FROM ng.approval_queue""")
+    return {"counts": counts, "items": rows}
+
+
+@router.post("/approvals/{item_id}/decide")
+def decide(item_id: int, req: DecisionRequest):
+    from ...db import connect as _connect
+
+    conn = _connect(cfg.db_url)
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """UPDATE ng.approval_queue
+                   SET status=%s, decided_by=%s, decided_at=now(), note=%s
+                   WHERE id=%s AND status='pending'
+                   RETURNING item_type, ref_id""",
+                (req.status, req.decided_by, req.note, item_id))
+            row = cur.fetchone()
+            if not row:
+                raise HTTPException(404, "대기 중인 항목이 아닙니다")
+            # 연동 상태 반영 — 큐 결정이 원본 객체의 상태를 함께 바꾼다
+            if row["item_type"] == "training_pair":
+                cur.execute(
+                    """UPDATE ng.training_pairs
+                       SET human_approval=%s, approved_by=%s, approved_at=now()
+                       WHERE id=%s""",
+                    (req.status, req.decided_by, int(row["ref_id"])))
+            elif row["item_type"] == "golden_question":
+                cur.execute(
+                    "UPDATE ng.golden_questions SET status=%s WHERE id=%s",
+                    ("approved" if req.status == "approved" else "retired",
+                     int(row["ref_id"])))
+    finally:
+        conn.close()
+    return {"id": item_id, "status": req.status}
+
+
 # ------------------------------------------------------------- 기기 관리 --
 # 에너지 공급(supply)/수요(demand)/저장(storage) 기기 등록·삭제·토글.
 

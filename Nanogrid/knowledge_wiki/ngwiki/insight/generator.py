@@ -87,5 +87,23 @@ def generate_doc(cfg: Config, doc_id: str, facts: dict[str, Any],
 
     _archive(cfg, doc_id, md)
     status = "updated" if existing else "created"
+
+    # 승인 게이트 (기획안 v0.2 §4, L1 사후 감사): 발행 사실을 큐에 등록한다.
+    try:
+        conn = connect(cfg.db_url)
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """INSERT INTO ng.approval_queue(item_type, ref_id, title, summary, level)
+                       SELECT 'insight_doc', %s, %s, %s, 'L1'
+                       WHERE NOT EXISTS (
+                         SELECT 1 FROM ng.approval_queue
+                         WHERE item_type='insight_doc' AND ref_id=%s AND status='pending')""",
+                    (doc_id, title, f"{status} · provider={provider.name} · facts={fh}", doc_id))
+        finally:
+            conn.close()
+    except Exception:  # noqa: BLE001 — 큐 등록 실패가 발행을 막지 않는다
+        log.warning("승인 큐 등록 실패: %s", doc_id)
+
     log.info("%s %s (provider=%s)", status, doc_id, provider.name)
     return status

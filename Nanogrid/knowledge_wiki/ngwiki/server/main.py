@@ -14,7 +14,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from ..config import load_config
-from .routers import admin, forecast, gov, monitor, wiki
+from .routers import admin, forecast, gov, learn, monitor, wiki
 
 cfg = load_config()
 
@@ -37,6 +37,7 @@ app.include_router(forecast.router, prefix="/api/ng/forecast", tags=["forecast"]
 app.include_router(wiki.router, prefix="/api/ng/wiki", tags=["wiki"])
 app.include_router(admin.router, prefix="/api/ng/admin", tags=["admin"])
 app.include_router(gov.router, prefix="/api/ng/gov", tags=["ai-gov"])
+app.include_router(learn.router, prefix="/api/ng/learn", tags=["llm-learn"])
 
 
 @app.get("/")

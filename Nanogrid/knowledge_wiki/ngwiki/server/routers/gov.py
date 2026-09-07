@@ -157,6 +157,12 @@ def analyze(doc_id: int):
             cur.execute(
                 "UPDATE ng.gov_documents SET analyzed_at=%s, analyzer=%s WHERE id=%s",
                 (datetime.now(timezone.utc), analyzer, doc_id))
+            # 승인 게이트 (L1 사후 감사): 분석 결과 등록
+            cur.execute(
+                """INSERT INTO ng.approval_queue(item_type, ref_id, title, summary, level)
+                   VALUES ('gov_analysis', %s, %s, %s, 'L1')""",
+                (str(doc_id), f"법률 분석: {doc['title']}",
+                 f"analyzer={analyzer} · 체크리스트 {len(items)}건"))
     finally:
         conn.close()
     return {"doc_id": doc_id, "analyzer": analyzer, "items": len(items)}
