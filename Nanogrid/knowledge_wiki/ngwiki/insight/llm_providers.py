@@ -22,11 +22,60 @@ class LLMProvider(Protocol):
 def get_provider(provider: str, options: dict[str, Any]) -> LLMProvider:
     if provider == "claude":
         return ClaudeProvider(options)
+    if provider == "grok":
+        return GrokProvider(options)
     if provider == "ollama":
         return OllamaProvider(options)
     if provider == "template":
         return TemplateProvider(options)
-    raise ValueError(f"알 수 없는 LLM provider: {provider} (claude | ollama | template)")
+    raise ValueError(f"알 수 없는 LLM provider: {provider} (claude | grok | ollama | template)")
+
+
+class GrokProvider:
+    """xAI Grok — OpenAI 호환 스펙(POST /v1/chat/completions), httpx 만으로 충분.
+
+    키는 XAI_API_KEY 환경변수에서만 읽는다. config·대화·저장소에 절대 적지 않는다.
+    (llmwiki llm/grok.py 와 동일 규약)
+    """
+
+    name = "grok"
+
+    def __init__(self, options: dict[str, Any]) -> None:
+        import os
+
+        self.base_url = str(
+            options.get("base_url") or os.environ.get("XAI_BASE_URL") or "https://api.x.ai/v1"
+        ).rstrip("/")
+        self.model = options.get("model") or os.environ.get("XAI_MODEL") \
+            or "grok-4.20-0309-non-reasoning"
+        self.max_tokens = int(options.get("max_tokens", 8000))
+        self.temperature = float(options.get("temperature", 0.2))
+        self.timeout = float(options.get("timeout", 300))
+        self.api_key = os.environ.get("XAI_API_KEY", "")
+
+    def complete(self, system: str, prompt: str) -> str:
+        import httpx
+
+        if not self.api_key:
+            raise RuntimeError("XAI_API_KEY 환경변수가 없습니다 — 서버 .env 에만 넣으세요")
+        payload = {
+            "model": self.model,
+            "max_tokens": self.max_tokens,
+            "temperature": self.temperature,
+            "messages": [
+                {"role": "system", "content": system},
+                {"role": "user", "content": prompt},
+            ],
+        }
+        with httpx.Client(timeout=self.timeout) as client:
+            resp = client.post(
+                f"{self.base_url}/chat/completions",
+                headers={"Authorization": f"Bearer {self.api_key}"},
+                json=payload,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+        return (data["choices"][0]["message"]["content"] or "").strip()
 
 
 class ClaudeProvider:

@@ -18,6 +18,11 @@ llm:
     max_tokens: 8000
     effort: medium
 
+  grok:
+    # 키는 XAI_API_KEY 환경변수로만 읽는다 — 여기·저장소·대화에 절대 적지 않는다
+    model: "grok-4.20-0309-non-reasoning"
+    max_tokens: 8000
+
   ollama:
     base_url: "http://211.119.38.216:11434"
     model: "qwen2.5-coder:32b"

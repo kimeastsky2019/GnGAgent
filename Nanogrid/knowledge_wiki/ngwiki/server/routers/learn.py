@@ -256,27 +256,48 @@ Score the CANDIDATE answer against the REFERENCE answer on 4 axes, integers 0-5:
 Ignore style and length. Output ONLY JSON: {"accuracy":n,"grounding":n,"completeness":n,"safety":n}"""
 
 
-def _judge(question: str, reference: str, candidate: str) -> tuple[dict, str]:
-    """Claude judge (있으면) → 어휘 중첩 휴리스틱 스텁 폴백."""
+def _parse_judge(raw: str) -> dict | None:
+    m = re.search(r"\{.*\}", raw, re.S)
+    if not m:
+        return None
     try:
-        import anthropic  # noqa: F401
-        import os
-        if os.environ.get("ANTHROPIC_API_KEY"):
+        s = json.loads(m.group(0))
+    except json.JSONDecodeError:
+        return None
+    return {k: max(0, min(5, int(s.get(k, 0))))
+            for k in ("accuracy", "grounding", "completeness", "safety")}
+
+
+def _judge(question: str, reference: str, candidate: str) -> tuple[dict, str]:
+    """judge 우선순위: Claude(공식 CES) → Grok(참고용) → 어휘 중첩 스텁.
+
+    기획 v0.2 §3: 공식 CES 의 심판은 Claude 로 고정한다. Grok judge 는 비용 절감용
+    참고 지표로, judge_model 에 그대로 기록되어 공식 수치와 구분된다.
+    """
+    import os
+
+    prompt = f"[QUESTION]\n{question}\n\n[REFERENCE]\n{reference}\n\n[CANDIDATE]\n{candidate}"
+    if os.environ.get("ANTHROPIC_API_KEY"):
+        try:
             from ...insight.llm_providers import ClaudeProvider
 
             judge = ClaudeProvider({"model": "claude-sonnet-5", "max_tokens": 300,
                                     "effort": "low"})
-            raw = judge.complete(
-                JUDGE_SYSTEM,
-                f"[QUESTION]\n{question}\n\n[REFERENCE]\n{reference}\n\n[CANDIDATE]\n{candidate}")
-            m = re.search(r"\{.*\}", raw, re.S)
-            if m:
-                s = json.loads(m.group(0))
-                return ({k: max(0, min(5, int(s.get(k, 0))))
-                         for k in ("accuracy", "grounding", "completeness", "safety")},
-                        judge.model)
-    except Exception:  # noqa: BLE001 — judge 실패는 스텁으로 폴백
-        pass
+            scores = _parse_judge(judge.complete(JUDGE_SYSTEM, prompt))
+            if scores:
+                return scores, f"claude:{judge.model}"
+        except Exception:  # noqa: BLE001 — 다음 심판으로 폴백
+            pass
+    if os.environ.get("XAI_API_KEY"):
+        try:
+            from ...insight.llm_providers import GrokProvider
+
+            judge = GrokProvider({"max_tokens": 300, "temperature": 0.0})
+            scores = _parse_judge(judge.complete(JUDGE_SYSTEM, prompt))
+            if scores:
+                return scores, f"grok:{judge.model}"
+        except Exception:  # noqa: BLE001
+            pass
 
     # 스텁: 형태소 수준 어휘 중첩 (파이프라인 검증용 — 공식 CES 아님)
     def toks(s: str) -> set[str]:
@@ -344,12 +365,17 @@ def ces_run(req: CesRunRequest):
                     (run_id, qid, answer[:4000], s, r, json.dumps(scores)))
     finally:
         conn.close()
+    jm = judge_model or "heuristic-stub"
+    official = jm.startswith("claude:")
+    if official:
+        note = None
+    elif jm.startswith("grok:"):
+        note = "Grok judge — 참고용 지표. 공식 CES(기획 v0.2 §3)는 Claude judge 채점만 인정"
+    else:
+        note = "휴리스틱 스텁 채점 — 파이프라인 검증용이며 공식 CES 아님 (judge 키 연결 필요)"
     return {"run_id": run_id, "ces": ces, "n": len(details),
-            "slm_model": slm_model, "judge_model": judge_model or "heuristic-stub",
-            "axis_avg": axis_avg,
-            "official": judge_model not in (None, "heuristic-stub"),
-            "note": None if judge_model not in (None, "heuristic-stub")
-                    else "휴리스틱 스텁 채점 — 파이프라인 검증용이며 공식 CES 아님 (Claude judge 키 연결 필요)"}
+            "slm_model": slm_model, "judge_model": jm,
+            "axis_avg": axis_avg, "official": official, "note": note}
 
 
 @router.get("/ces/runs")
